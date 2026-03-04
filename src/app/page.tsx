@@ -105,7 +105,10 @@ export default function HomePage() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data?.error ?? "Recommendation failed");
+      setError(
+    (data?.error ?? "Recommendation failed") +
+    (data?.detail ? `: ${data.detail}` : "")
+    );
       setRecs([]);
       return;
     }
