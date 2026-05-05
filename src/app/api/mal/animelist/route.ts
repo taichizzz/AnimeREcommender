@@ -9,22 +9,24 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const params = new URLSearchParams({
-    status: "completed",
-    sort: "list_score",
-    limit: "100",
-    fields: "list_status{score},mean,genres,num_episodes,main_picture",
-  });
+  const fields = "list_status{score},mean,genres,num_episodes,main_picture";
+  const allAnime = [];
 
-  const res = await fetch(
-    `https://api.myanimelist.net/v2/users/@me/animelist?${params}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+  // MAL caps each page at 100 — keep fetching until there is no next page
+  let url: string | null =
+    `https://api.myanimelist.net/v2/users/@me/animelist?status=completed&sort=list_score&limit=100&fields=${fields}`;
 
-  if (!res.ok) {
-    return NextResponse.json({ error: "Failed to fetch anime list" }, { status: res.status });
+  while (url) {
+    const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+
+    if (!res.ok) {
+      return NextResponse.json({ error: "Failed to fetch anime list" }, { status: res.status });
+    }
+
+    const data: { data?: unknown[]; paging?: { next?: string } } = await res.json();
+    allAnime.push(...(data.data ?? []));
+    url = data.paging?.next ?? null;
   }
 
-  const data = await res.json();
-  return NextResponse.json({ anime: data.data ?? [] });
+  return NextResponse.json({ anime: allAnime });
 }

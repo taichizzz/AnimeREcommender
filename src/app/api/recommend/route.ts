@@ -163,8 +163,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // UI max is 3
-  const likedAnimeIds = likedAnimeIdsUnknown.slice(0, 3);
+  const likedAnimeIds = likedAnimeIdsUnknown.slice(0, 10);
   const likedSet = new Set(likedAnimeIds);
 
   try {

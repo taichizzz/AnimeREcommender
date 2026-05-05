@@ -33,6 +33,16 @@ body {
   animation: cardAppear 0.35s ease both;
 }
 
+@keyframes gridFadeOut {
+  from { opacity: 1; transform: translateY(0px); }
+  to   { opacity: 0; transform: translateY(-10px); }
+}
+
+.grid-exit {
+  animation: gridFadeOut 0.18s ease forwards;
+  pointer-events: none;
+}
+
 @keyframes slicePop {
   from { opacity: 0.4; transform: scale(0.96); }
   to   { opacity: 1;   transform: scale(1); }

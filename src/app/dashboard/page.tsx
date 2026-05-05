@@ -157,6 +157,17 @@ export default function DashboardPage() {
   }, [router]);
 
   const stats = user?.anime_statistics;
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(0);
+  const [transitioning, setTransitioning] = useState(false);
+
+  function goToPage(n: number) {
+    setTransitioning(true);
+    setTimeout(() => {
+      setPage(n);
+      setTransitioning(false);
+    }, 180);
+  }
 
   // Donut data — list status breakdown
   const statusData = useMemo(() => {
@@ -201,6 +212,9 @@ export default function DashboardPage() {
       .slice(0, 8)
       .map(([name, count]) => ({ name, count }));
   }, [anime]);
+
+  const totalPages = Math.ceil(anime.length / PAGE_SIZE);
+  const pagedAnime = anime.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   async function handleRecommendFromList() {
     const topIds = anime
@@ -370,8 +384,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Anime grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-          {anime.map((entry, i) => (
+        <div key={page} className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 mb-8 ${transitioning ? "grid-exit" : ""}`}>
+          {pagedAnime.map((entry, i) => (
             <div key={entry.node.id}
               className="card-appear group rounded-2xl border border-white/10 bg-white/5
                 overflow-hidden transition-all duration-200
@@ -393,6 +407,47 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 pb-12">
+            <button
+              onClick={() => goToPage(page - 1)}
+              disabled={page === 0 || transitioning}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10
+                hover:bg-white/10 hover:border-white/20 transition-all duration-200
+                disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ← Prev
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goToPage(i)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200
+                    ${i === page
+                      ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30"
+                      : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/10"
+                    }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => goToPage(page + 1)}
+              disabled={page === totalPages - 1 || transitioning}
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10
+                hover:bg-white/10 hover:border-white/20 transition-all duration-200
+                disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Next →
+            </button>
+          </div>
+        )}
 
       </main>
     </div>
