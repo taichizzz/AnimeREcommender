@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Anime Recommender
+
+Anime Recommender is a Next.js app that helps users find new anime based on shows they already like. Users can search for anime, select up to three favorites, and generate recommendations using data from the Jikan API, an unofficial MyAnimeList API.
+
+## Features
+
+- Search anime by title using Jikan/MyAnimeList data.
+- Select up to 3 anime as preference inputs.
+- Generate recommendations from fan recommendation signals and genre similarity.
+- Show recommendation details including title, poster image, score, year, and a short reason.
+- Filter out many sequel, recap, special, OVA, ONA, and movie-style results to keep recommendations focused on mainline shows.
+- Includes simple API health checking.
+
+## Tech Stack
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Jikan API
 
 ## Getting Started
 
-First, run the development server:
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Available Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev
+```
 
-## Learn More
+Runs the app locally with IPv4 DNS preference enabled for Jikan API requests.
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Builds the production app.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run start
+```
 
-## Deploy on Vercel
+Starts the production server after a build.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run lint
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Runs ESLint.
+
+## API Routes
+
+### `GET /api/search?q=<query>`
+
+Searches Jikan for anime matching the query.
+
+Returns:
+
+```json
+{
+  "results": [
+    {
+      "id": 20,
+      "title": "Naruto",
+      "synopsis": "...",
+      "imageUrl": "https://...",
+      "score": 7.99,
+      "year": 2002
+    }
+  ]
+}
+```
+
+### `POST /api/recommend`
+
+Generates recommendations from selected anime IDs.
+
+Request body:
+
+```json
+{
+  "likedAnimeIds": [20, 16498, 5114]
+}
+```
+
+Returns:
+
+```json
+{
+  "results": [
+    {
+      "id": 1535,
+      "title": "Death Note",
+      "imageUrl": "https://...",
+      "score": 8.62,
+      "year": 2006,
+      "reason": "Recommended by fans of: ..."
+    }
+  ]
+}
+```
+
+### `GET /api/health`
+
+Returns a simple health response:
+
+```json
+{
+  "ok": true,
+  "message": "API is working"
+}
+```
+
+## Recommendation Notes
+
+Recommendations are built from two main signals:
+
+- Related anime recommended by Jikan/MyAnimeList users.
+- High-scoring anime from genres shared by the selected favorites.
+
+The recommendation route also uses a small in-memory cache and retry delay to reduce repeated API calls and handle temporary rate limits.
+
+Jikan may still rate-limit requests, especially when generating recommendations from multiple selected anime. If that happens, wait a few seconds and try again.
+
+## Current Limitations
+
+- Recommendations depend on Jikan API availability and rate limits.
+- Filtering sequel or special titles is heuristic, so some unwanted titles may still appear.
+- The in-memory cache is process-local and resets when the server restarts.
+- No user accounts, saved lists, or persistent recommendation history are included yet.

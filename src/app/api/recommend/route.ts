@@ -52,6 +52,43 @@ function isNumberArray(x: unknown): x is number[] {
   return Array.isArray(x) && x.every((v) => typeof v === "number" && Number.isFinite(v));
 }
 
+type FeatureVector = Map<string, number>;
+
+function vectorFromAnime(a: {
+  genres?: JikanNamed[];
+  themes?: JikanNamed[];
+  demographics?: JikanNamed[];
+}): FeatureVector {
+  const v: FeatureVector = new Map();
+  const add = (name: string) => v.set(name, (v.get(name) ?? 0) + 1);
+  for (const g of a.genres ?? []) add(g.name);
+  for (const t of a.themes ?? []) add(t.name);
+  for (const d of a.demographics ?? []) add(d.name);
+  return v;
+}
+
+function sumVectors(vectors: FeatureVector[]): FeatureVector {
+  const out: FeatureVector = new Map();
+  for (const v of vectors) {
+    for (const [k, n] of v) out.set(k, (out.get(k) ?? 0) + n);
+  }
+  return out;
+}
+
+function cosineSimilarity(a: FeatureVector, b: FeatureVector): number {
+  let dot = 0;
+  for (const [k, va] of a) {
+    const vb = b.get(k);
+    if (vb !== undefined) dot += va * vb;
+  }
+  let normA = 0;
+  for (const va of a.values()) normA += va * va;
+  let normB = 0;
+  for (const vb of b.values()) normB += vb * vb;
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
 function normalizeTitle(t: string) {
   return t.toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -152,6 +189,7 @@ export async function POST(request: Request) {
       for (const d of a.demographics ?? []) nameSet.add(d.name);
     }
 
+    const userVector = sumVectors(likedAnime.map(vectorFromAnime));
     const becauseTitles = likedAnime.map((x) => x.title).join(", ");
 
     // 3) Candidate generation v2: related recs + genre list
@@ -276,20 +314,21 @@ export async function POST(request: Request) {
     const scored = candidates
       .map((wrap) => {
         const c = wrap.item;
+        const candVec = vectorFromAnime(c);
 
-        const overlap = (c.genres ?? []).map((g) => g.name).filter((name) => nameSet.has(name));
-        const overlapScore = overlap.length * 2;
+        const sim = cosineSimilarity(userVector, candVec);
+        const similarityScore = sim * 10;
         const malScore = (c.score ?? 0) / 2;
 
-        // Total score: related-bonus is strong, then overlap, then MAL score
-        const total = wrap.bonus + overlapScore + malScore;
+        const total = wrap.bonus + similarityScore + malScore;
 
+        const overlap = (c.genres ?? []).map((g) => g.name).filter((name) => nameSet.has(name));
         const overlapText = overlap.length > 0 ? overlap.slice(0, 3).join(", ") : "your picks";
 
         return {
           c,
           total,
-          reason: `${wrap.why}. Because you liked ${becauseTitles}. Similar in: ${overlapText}.`,
+          reason: `${wrap.why}. Because you liked ${becauseTitles}. Similar in: ${overlapText} (similarity ${sim.toFixed(2)}).`,
         };
       })
       .sort((a, b) => b.total - a.total)
