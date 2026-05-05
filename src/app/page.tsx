@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type SearchItem = {
   id: number;
@@ -29,6 +30,8 @@ function Spinner() {
 }
 
 export default function HomePage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchItem[]>([]);
   const [searchKey, setSearchKey] = useState(0);
@@ -39,6 +42,13 @@ export default function HomePage() {
   const [recLoading, setRecLoading] = useState(false);
 
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setIsLoggedIn(!!d.user))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setRecs([]);
@@ -121,14 +131,34 @@ export default function HomePage() {
 
       <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-purple-300 to-pink-400 bg-clip-text text-transparent pb-1">
+        <div className="flex items-center justify-between mb-12">
+          <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-purple-300 to-pink-400 bg-clip-text text-transparent pb-1">
             Animer
           </h1>
-          <p className="mt-3 text-slate-400 text-base">
-            Pick up to 3 anime you love — we&apos;ll find what to watch next.
-          </p>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/15
+                border border-white/10 hover:border-white/20 transition-all duration-200"
+            >
+              My Dashboard
+            </Link>
+          ) : (
+            <a
+              href="/api/auth/login"
+              className="px-4 py-2 rounded-xl text-sm font-semibold
+                bg-gradient-to-r from-violet-600 to-purple-600
+                hover:from-violet-500 hover:to-purple-500
+                shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30
+                transition-all duration-200"
+            >
+              Login with MAL
+            </a>
+          )}
         </div>
+        <p className="text-slate-400 text-base mb-10 -mt-8">
+          Pick up to 3 anime you love — we&apos;ll find what to watch next.
+        </p>
 
         {/* Selected panel */}
         <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
