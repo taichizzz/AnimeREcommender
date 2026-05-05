@@ -20,22 +20,26 @@ type RecommendationItem = {
   reason: string;
 };
 
+function Spinner() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="w-10 h-10 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchItem[]>([]);
+  const [searchKey, setSearchKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  //store the user's selected favorites (max 3)
   const [selected, setSelected] = useState<SearchItem[]>([]);
-
   const [recs, setRecs] = useState<RecommendationItem[]>([]);
   const [recLoading, setRecLoading] = useState(false);
 
-  //fast lookup set so we can check "is selected?" quickly
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
 
-  // Clear old recommendations whenever the selected anime changes
   useEffect(() => {
     setRecs([]);
   }, [selectedIds]);
@@ -43,21 +47,18 @@ export default function HomePage() {
   async function handleSearch() {
     const q = query.trim();
     if (!q) return;
-
     setLoading(true);
     setError(null);
-
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-
       if (!res.ok) {
         setError(data?.error ?? "Search failed");
         setResults([]);
         return;
       }
-
       setResults(data.results);
+      setSearchKey((k) => k + 1);
     } catch {
       setError("Network error while searching");
       setResults([]);
@@ -66,305 +67,321 @@ export default function HomePage() {
     }
   }
 
-  //add an anime to selected (if not already selected and < 3)
   function addToSelected(item: SearchItem) {
-    // already selected? do nothing
     if (selectedIds.has(item.id)) return;
-
-    // max 3 rule
     if (selected.length >= 3) {
       setError("You can select up to 3 anime only.");
       return;
     }
-
     setError(null);
     setSelected((prev) => [...prev, item]);
   }
 
-  //remove an anime from selected
   function removeFromSelected(id: number) {
     setError(null);
     setSelected((prev) => prev.filter((a) => a.id !== id));
   }
 
   async function handleRecommend() {
-  if (selected.length === 0) return;
-
-  setRecLoading(true);
-  setError(null);
-
-  try {
-    const res = await fetch("/api/recommend", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        likedAnimeIds: selected.map((a) => a.id),
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(
-    (data?.error ?? "Recommendation failed") +
-    (data?.detail ? `: ${data.detail}` : "")
-    );
+    if (selected.length === 0) return;
+    setRecLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/recommend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ likedAnimeIds: selected.map((a) => a.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(
+          (data?.error ?? "Recommendation failed") +
+            (data?.detail ? `: ${data.detail}` : "")
+        );
+        setRecs([]);
+        return;
+      }
+      setRecs(data.results);
+    } catch {
+      setError("Network error while recommending");
       setRecs([]);
-      return;
+    } finally {
+      setRecLoading(false);
     }
-
-    setRecs(data.results);
-  } catch {
-    setError("Network error while recommending");
-    setRecs([]);
-  } finally {
-    setRecLoading(false);
   }
-}
 
   return (
-    <main style={{ padding: 24, maxWidth: 900, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700 }}>Anime Recommender</h1>
-      <p style={{ opacity: 0.8 }}>
-        Search anime, then select up to 3 that you like. We’ll use them to recommend new shows.
-      </p>
+    <div className="min-h-screen bg-[#0a0a14] text-white">
+      {/* Ambient background glows */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 left-1/3 w-[600px] h-[600px] bg-violet-700/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] bg-purple-700/8 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-800/8 rounded-full blur-3xl" />
+      </div>
 
-      {/*Selected section */}
-      <section
-        style={{
-          marginTop: 16,
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 12,
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Selected ({selected.length}/3)</h2>
+      <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-purple-300 to-pink-400 bg-clip-text text-transparent pb-1">
+            Animer
+          </h1>
+          <p className="mt-3 text-slate-400 text-base">
+            Pick up to 3 anime you love — we&apos;ll find what to watch next.
+          </p>
+        </div>
+
+        {/* Selected panel */}
+        <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Your picks
+              </h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-mono">
+                {selected.length}/3
+              </span>
+            </div>
+            <button
+              onClick={() => setSelected([])}
+              disabled={selected.length === 0}
+              className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Clear all
+            </button>
+          </div>
+
+          {selected.length === 0 ? (
+            <p className="text-slate-500 text-sm mb-4">
+              Search for anime below and select up to 3 you enjoy.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-3 mb-4">
+              {selected.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 border border-white/10"
+                >
+                  {a.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={a.imageUrl}
+                      alt={a.title}
+                      className="w-7 object-cover rounded-md flex-shrink-0"
+                      style={{ height: "36px" }}
+                    />
+                  )}
+                  <span className="text-sm font-medium max-w-[160px] truncate">
+                    {a.title}
+                  </span>
+                  <button
+                    onClick={() => removeFromSelected(a.id)}
+                    className="text-slate-400 hover:text-red-400 transition-colors ml-1 text-xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <button
-            onClick={() => setSelected([])}
-            disabled={selected.length === 0}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid #ccc",
-              cursor: selected.length === 0 ? "not-allowed" : "pointer",
-              opacity: selected.length === 0 ? 0.5 : 1,
-            }}
+            onClick={handleRecommend}
+            disabled={selected.length === 0 || recLoading}
+            className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
+              bg-gradient-to-r from-violet-600 to-purple-600
+              hover:from-violet-500 hover:to-purple-500
+              shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40
+              disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none
+              active:scale-[0.98]"
           >
-            Clear
+            {recLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Finding recommendations…
+              </span>
+            ) : (
+              "Get Recommendations →"
+            )}
           </button>
         </div>
 
-        {selected.length === 0 ? (
-          <p style={{ marginTop: 8, opacity: 0.75 }}>
-            No anime selected yet. Search and click “Select”.
-          </p>
-        ) : (
-          <ul style={{ marginTop: 10, paddingLeft: 18 }}>
-            {selected.map((a) => (
-              <li key={a.id} style={{ marginBottom: 6 }}>
-                <strong>{a.title}</strong>{" "}
-                <button
-                  onClick={() => removeFromSelected(a.id)}
-                  style={{
-                    marginLeft: 8,
-                    padding: "4px 8px",
-                    borderRadius: 8,
-                    border: "1px solid #ccc",
-                    cursor: "pointer",
-                    fontSize: 12,
-                  }}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
+        {/* Search bar */}
+        <div className="flex gap-3 mb-4">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Try: Naruto, Attack on Titan, Frieren…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearch();
+            }}
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
+              placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
+              focus:bg-white/10 transition-all duration-200"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={loading}
+            className="px-6 py-3 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/15
+              border border-white/10 hover:border-white/20 transition-all duration-200
+              disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Searching
+              </span>
+            ) : (
+              "Search"
+            )}
+          </button>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            {error}
+          </div>
         )}
 
-        <button
-          onClick={handleRecommend}
-          disabled={selected.length === 0 || recLoading}
-          style={{
-            marginTop: 10,
-            padding: "8px 10px",
-            borderRadius: 8,
-            border: "1px solid #ccc",
-            cursor: selected.length === 0 ? "not-allowed" : "pointer",
-            opacity: selected.length === 0 ? 0.5 : 1,
-          }}
-        >
-          {recLoading ? "Recommending..." : "Get Recommendations"}
-        </button>
-      </section>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Try: naruto, attack on titan, frieren..."
-          style={{
-            flex: 1,
-            padding: 10,
-            border: "1px solid #ccc",
-            borderRadius: 8,
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSearch();
-          }}
-        />
-        <button
-          onClick={handleSearch}
-          disabled={loading}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #ccc",
-            cursor: "pointer",
-          }}
-        >
-          {loading ? "Searching..." : "Search"}
-        </button>
-      </div>
-
-      {error && <p style={{ color: "crimson", marginTop: 12 }}>{error}</p>}
-
-      <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
-        {results.map((a) => {
-          const isSelected = selectedIds.has(a.id);
-
-          return (
-            <div
-              key={a.id}
-              style={{
-                display: "flex",
-                gap: 12,
-                border: "1px solid #ddd",
-                borderRadius: 12,
-                padding: 12,
-                alignItems: "flex-start",
-              }}
-            >
-              {a.imageUrl ? (
-                <img
-                  src={a.imageUrl}
-                  alt={a.title}
-                  width={80}
-                  height={110}
-                  style={{ borderRadius: 8, objectFit: "cover" }}
-                />
-              ) : (
+        {/* Search results */}
+        {loading ? (
+          <Spinner />
+        ) : (
+          <div className="grid gap-3">
+            {results.map((a, i) => {
+              const isSelected = selectedIds.has(a.id);
+              return (
                 <div
-                  style={{
-                    width: 80,
-                    height: 110,
-                    borderRadius: 8,
-                    background: "#eee",
-                  }}
-                />
-              )}
-
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                  <h2 style={{ margin: 0, fontSize: 18 }}>{a.title}</h2>
-                  <span style={{ opacity: 0.7 }}>
-                    {a.year ?? "?"} • ⭐ {a.score ?? "?"}
-                  </span>
-                </div>
-
-                <p style={{ marginTop: 6, opacity: 0.85 }}>
-                  {(a.synopsis ?? "No synopsis.").slice(0, 220)}
-                  {a.synopsis && a.synopsis.length > 220 ? "..." : ""}
-                </p>
-              </div>
-
-              {/*/Remove button */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {isSelected ? (
-                  <button
-                    onClick={() => removeFromSelected(a.id)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: "1px solid #ccc",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Selected ✓
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => addToSelected(a)}
-                    disabled={selected.length >= 3}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: "1px solid #ccc",
-                      cursor: selected.length >= 3 ? "not-allowed" : "pointer",
-                      opacity: selected.length >= 3 ? 0.5 : 1,
-                    }}
-                  >
-                    Select
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {recs.length > 0 && (
-        <section style={{ marginTop: 28 }}>
-          <h2 style={{ fontSize: 18, marginBottom: 12 }}>Recommendations</h2>
-
-          <div style={{ display: "grid", gap: 12 }}>
-            {recs.map((r) => (
-              <div
-                key={r.id}
-                style={{
-                  display: "flex",
-                  gap: 12,
-                  border: "1px solid #ddd",
-                  borderRadius: 12,
-                  padding: 12,
-                }}
-              >
-                {r.imageUrl ? (
-                  <img
-                    src={r.imageUrl}
-                    alt={r.title}
-                    width={80}
-                    height={110}
-                    style={{ borderRadius: 8, objectFit: "cover" }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 80,
-                      height: 110,
-                      background: "#eee",
-                      borderRadius: 8,
-                    }}
-                  />
-                )}
-
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                    <h3 style={{ margin: 0 }}>{r.title}</h3>
-                    <span style={{ opacity: 0.7 }}>
-                      {r.year ?? "?"} • ⭐ {r.score ?? "?"}
-                    </span>
+                  key={`${searchKey}-${i}`}
+                  className={`card-appear flex gap-4 rounded-2xl border p-4 transition-all duration-200 hover:-translate-y-0.5
+                    ${
+                      isSelected
+                        ? "border-violet-500/50 bg-violet-500/10 shadow-lg shadow-violet-500/10"
+                        : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8 hover:shadow-lg hover:shadow-black/30"
+                    }`}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  {/* Poster */}
+                  <div className="flex-shrink-0">
+                    {a.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={a.imageUrl}
+                        alt={a.title}
+                        className="w-16 object-cover rounded-lg"
+                        style={{ height: "88px" }}
+                      />
+                    ) : (
+                      <div
+                        className="w-16 rounded-lg bg-white/10"
+                        style={{ height: "88px" }}
+                      />
+                    )}
                   </div>
 
-                  <p style={{ marginTop: 6, opacity: 0.9 }}>
-                    <strong>Reason:</strong> {r.reason}
-                  </p>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <h3 className="font-semibold text-white">{a.title}</h3>
+                      <span className="text-xs text-slate-500">
+                        {a.year ?? "?"} · ⭐ {a.score ?? "?"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">
+                      {a.synopsis ?? "No synopsis available."}
+                    </p>
+                  </div>
+
+                  {/* Select button */}
+                  <div className="flex-shrink-0 flex items-start pt-0.5">
+                    {isSelected ? (
+                      <button
+                        onClick={() => removeFromSelected(a.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold
+                          bg-violet-500/20 text-violet-300 border border-violet-500/30
+                          hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30
+                          transition-all duration-200"
+                      >
+                        ✓ Added
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => addToSelected(a)}
+                        disabled={selected.length >= 3}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold
+                          bg-white/10 text-slate-300 border border-white/10
+                          hover:bg-violet-500/20 hover:text-violet-300 hover:border-violet-500/30
+                          transition-all duration-200
+                          disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        + Select
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </section>
-      )}
-    </main>
+        )}
+
+        {/* Recommendations loading */}
+        {recLoading && <Spinner />}
+
+        {/* Recommendations */}
+        {recs.length > 0 && !recLoading && (
+          <section className="mt-14">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+                Recommendations
+              </h2>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            </div>
+
+            <div className="grid gap-4">
+              {recs.map((r, i) => (
+                <div
+                  key={r.id}
+                  className="card-appear flex gap-4 rounded-2xl border border-white/10 bg-white/5 p-4
+                    transition-all duration-200 hover:-translate-y-0.5
+                    hover:border-white/20 hover:shadow-lg hover:shadow-black/30"
+                  style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  {/* Rank + poster */}
+                  <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
+                    <span className="text-xs font-mono text-slate-600">#{i + 1}</span>
+                    {r.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={r.imageUrl}
+                        alt={r.title}
+                        className="w-16 object-cover rounded-lg"
+                        style={{ height: "88px" }}
+                      />
+                    ) : (
+                      <div
+                        className="w-16 rounded-lg bg-white/10"
+                        style={{ height: "88px" }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <h3 className="font-semibold text-white">{r.title}</h3>
+                      <span className="text-xs text-slate-500">
+                        {r.year ?? "?"} · ⭐ {r.score ?? "?"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400 leading-relaxed">{r.reason}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
+    </div>
   );
 }
