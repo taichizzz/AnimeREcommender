@@ -6,22 +6,16 @@ export async function GET(request: NextRequest) {
   const baseUrl = new URL(request.url).origin;
   const redirectUri = `${baseUrl}/api/auth/callback`;
 
-  // PKCE: generate a random verifier, then hash it to get the challenge.
-  // MAL requires this so the token exchange can't be intercepted.
+  // PKCE: MAL only supports the "plain" method, meaning code_challenge === code_verifier.
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
-  const codeChallenge = crypto
-    .createHash("sha256")
-    .update(codeVerifier)
-    .digest("base64url");
-
   const state = crypto.randomBytes(16).toString("hex");
 
   const params = new URLSearchParams({
     response_type: "code",
     client_id: clientId,
     redirect_uri: redirectUri,
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256",
+    code_challenge: codeVerifier,
+    code_challenge_method: "plain",
     state,
   });
 
