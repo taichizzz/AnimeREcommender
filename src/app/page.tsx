@@ -105,7 +105,7 @@ export default function HomePage() {
     setError(null);
     setSeeds([]);
     try {
-      const res = await fetch("/api/recommend", {
+      const res = await fetch("/api/recommend/anilist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ likedAnimeIds: selected.map((a) => a.id) }),
@@ -419,7 +419,7 @@ export default function HomePage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 mb-1 flex-wrap">
                       <h3 className="font-semibold text-white">{r.title}</h3>
-                      <span className="text-xs text-slate-500">{r.year ?? "?"} · ⭐ {r.score ?? "?"}</span>
+                      <span className="text-xs text-slate-500">{r.year ?? "?"} · ⭐ {r.score != null ? `${r.score}%` : "?"}</span>
                     </div>
                     <p className="text-sm text-slate-400 leading-relaxed">{r.reason}</p>
                   </div>
