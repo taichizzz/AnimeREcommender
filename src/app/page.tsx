@@ -105,7 +105,7 @@ export default function HomePage() {
     setError(null);
     setSeeds([]);
     try {
-      const res = await fetch("/api/recommend/anilist", {
+      const res = await fetch("/api/recommend/v2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ likedAnimeIds: selected.map((a) => a.id) }),

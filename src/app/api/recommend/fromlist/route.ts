@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Fetch completed list (all pages) + watching list in parallel
   const [completed, watching] = await Promise.all([
     fetchAllMALList(token, "completed"),
     fetchAllMALList(token, "watching"),
@@ -40,39 +39,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No completed anime found in your list" }, { status: 400 });
   }
 
-  // All watched IDs to exclude from recommendations
+  // All watched IDs (excluded from recommendations regardless of rating)
   const excludeMalIds = [
     ...completed.map((e) => e.node.id),
     ...watching.map((e) => e.node.id),
   ];
 
-  // Seeds: top 15 highest-rated completed anime (score ≥ 7), weighted by score
-  const seeds = completed
-    .filter((e) => e.list_status.score >= 7)
-    .slice(0, 15);
+  // Use the user's ENTIRE rated history as signal — low scores are negative,
+  // high scores are positive. The pgvector RPC weights them as (score - 6.5),
+  // so a 10 pulls strongly toward similar anime, a 3 pushes away.
+  const rated = completed.filter((e) => e.list_status.score > 0);
 
-  if (seeds.length === 0) {
+  if (rated.length === 0) {
     return NextResponse.json(
-      { error: "No highly-rated anime found — rate some completed anime (7+) to get recommendations" },
+      { error: "No rated anime found — rate some completed anime to get personalized recommendations" },
       { status: 400 }
     );
   }
 
-  const likedAnimeIds = seeds.map((e) => e.node.id);
+  const likedAnimeIds = rated.map((e) => e.node.id);
+  const likedScores = rated.map((e) => e.list_status.score);
 
-  // Show top 5 as display seeds in the UI
-  const seedInfo = seeds.slice(0, 5).map((e) => ({
-    id: e.node.id,
-    title: e.node.title,
-    imageUrl: e.node.main_picture?.medium ?? null,
-    score: e.list_status.score,
-  }));
+  // Show top 5 highest-rated as display seeds in the UI
+  const seedInfo = [...rated]
+    .sort((a, b) => b.list_status.score - a.list_status.score)
+    .slice(0, 5)
+    .map((e) => ({
+      id: e.node.id,
+      title: e.node.title,
+      imageUrl: e.node.main_picture?.medium ?? null,
+      score: e.list_status.score,
+    }));
 
   const baseUrl = new URL(request.url).origin;
-  const recRes = await fetch(`${baseUrl}/api/recommend/anilist`, {
+  const recRes = await fetch(`${baseUrl}/api/recommend/v2`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ likedAnimeIds, excludeMalIds }),
+    body: JSON.stringify({ likedAnimeIds, likedScores, excludeMalIds }),
   });
 
   const recData = await recRes.json();

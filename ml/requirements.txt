@@ -1,0 +1,6 @@
+requests>=2.32
+supabase>=2.7
+openai>=1.40           # only needed for --provider openai
+# Uncomment if you want the free local-embedding option:
+# sentence-transformers>=3.0
+# torch>=2.2
