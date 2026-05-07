@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  // Optional natural-language preferences from the user (forwarded to Groq)
+  const body = await request.json().catch(() => null);
+  const userText: unknown = body?.userText;
+
   const [completed, watching] = await Promise.all([
     fetchAllMALList(token, "completed"),
     fetchAllMALList(token, "watching"),
@@ -60,6 +64,13 @@ export async function POST(request: NextRequest) {
   const likedAnimeIds = rated.map((e) => e.node.id);
   const likedScores = rated.map((e) => e.list_status.score);
 
+  console.log(
+    `[fromlist] Using ALL ${rated.length} rated anime as signal ` +
+    `(${rated.filter((e) => e.list_status.score >= 7).length} positive, ` +
+    `${rated.filter((e) => e.list_status.score < 6).length} negative). ` +
+    `Excluding ${excludeMalIds.length} watched/watching from results.`
+  );
+
   // Show top 5 highest-rated as display seeds in the UI
   const seedInfo = [...rated]
     .sort((a, b) => b.list_status.score - a.list_status.score)
@@ -75,7 +86,7 @@ export async function POST(request: NextRequest) {
   const recRes = await fetch(`${baseUrl}/api/recommend/v2`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ likedAnimeIds, likedScores, excludeMalIds }),
+    body: JSON.stringify({ likedAnimeIds, likedScores, excludeMalIds, userText }),
   });
 
   const recData = await recRes.json();

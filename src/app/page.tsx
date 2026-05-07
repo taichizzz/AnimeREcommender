@@ -50,6 +50,7 @@ export default function HomePage() {
   const [recs, setRecs] = useState<RecommendationItem[]>([]);
   const [seeds, setSeeds] = useState<SeedItem[]>([]);
   const [recLoading, setRecLoading] = useState(false);
+  const [userText, setUserText] = useState("");
 
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
 
@@ -108,7 +109,10 @@ export default function HomePage() {
       const res = await fetch("/api/recommend/v2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ likedAnimeIds: selected.map((a) => a.id) }),
+        body: JSON.stringify({
+          likedAnimeIds: selected.map((a) => a.id),
+          userText: userText.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -130,7 +134,11 @@ export default function HomePage() {
     setError(null);
     setSeeds([]);
     try {
-      const res = await fetch("/api/recommend/fromlist", { method: "POST" });
+      const res = await fetch("/api/recommend/fromlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userText: userText.trim() || undefined }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data?.error ?? "Recommendation failed");
@@ -185,22 +193,28 @@ export default function HomePage() {
 
         {/* Mode toggle — only shown when logged in */}
         {isLoggedIn && (
-          <div className="flex gap-1 p-1 bg-white/5 rounded-2xl border border-white/10 mb-8">
+          <div className="relative flex p-1 bg-white/5 rounded-2xl border border-white/10 mb-8 backdrop-blur-md overflow-hidden">
+            {/* Sliding glass indicator */}
+            <div
+              className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl
+                bg-gradient-to-r from-violet-600 to-purple-600
+                shadow-lg shadow-violet-500/30
+                transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+              style={{
+                transform: mode === "manual" ? "translateX(0)" : "translateX(100%)",
+              }}
+            />
             <button
               onClick={() => setMode("manual")}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
-                ${mode === "manual"
-                  ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-400 hover:text-white"}`}
+              className={`relative z-10 flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300
+                ${mode === "manual" ? "text-white" : "text-slate-400 hover:text-white"}`}
             >
               Pick Your Own
             </button>
             <button
               onClick={() => setMode("mylist")}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
-                ${mode === "mylist"
-                  ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20"
-                  : "text-slate-400 hover:text-white"}`}
+              className={`relative z-10 flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300
+                ${mode === "mylist" ? "text-white" : "text-slate-400 hover:text-white"}`}
             >
               ✦ From My MAL List
             </button>
@@ -209,7 +223,7 @@ export default function HomePage() {
 
         {/* ── MAL LIST MODE ───────────────────────────────────────────── */}
         {mode === "mylist" && (
-          <div className="mb-8 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-6">
+          <div key="mylist" className="liquid-appear mb-8 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-6">
             <h2 className="font-bold text-white text-lg mb-1">Recommendations from your list</h2>
             <p className="text-slate-400 text-sm mb-6">
               We&apos;ll use your 5 highest-rated completed anime as seeds and find what to watch next.
@@ -233,6 +247,22 @@ export default function HomePage() {
               </div>
             )}
 
+            <div className="mb-4">
+              <label className="block text-xs uppercase tracking-widest text-slate-500 mb-2">
+                Anything specific? <span className="lowercase tracking-normal text-slate-600">(optional)</span>
+              </label>
+              <textarea
+                value={userText}
+                onChange={(e) => setUserText(e.target.value)}
+                placeholder="e.g. something light tonight · no romance · short series only"
+                rows={2}
+                maxLength={500}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
+                  placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
+                  focus:bg-white/10 transition-all duration-200 resize-none"
+              />
+            </div>
+
             <button
               onClick={handleListRecommend}
               disabled={recLoading}
@@ -253,7 +283,7 @@ export default function HomePage() {
 
         {/* ── MANUAL MODE ─────────────────────────────────────────────── */}
         {mode === "manual" && (
-          <>
+          <div key="manual" className="liquid-appear">
             {/* Selected panel */}
             <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
               <div className="flex items-center justify-between mb-4">
@@ -286,6 +316,24 @@ export default function HomePage() {
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {selected.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-xs uppercase tracking-widest text-slate-500 mb-2">
+                    Anything specific? <span className="lowercase tracking-normal text-slate-600">(optional)</span>
+                  </label>
+                  <textarea
+                    value={userText}
+                    onChange={(e) => setUserText(e.target.value)}
+                    placeholder="e.g. something light tonight · no romance · short series only"
+                    rows={2}
+                    maxLength={500}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
+                      placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
+                      focus:bg-white/10 transition-all duration-200 resize-none"
+                  />
                 </div>
               )}
 
@@ -323,7 +371,7 @@ export default function HomePage() {
                 ) : "Search"}
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {/* Error */}
@@ -333,8 +381,8 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Search results — only in manual mode */}
-        {mode === "manual" && (
+        {/* Search results — only in manual mode, hidden once recs are shown */}
+        {mode === "manual" && recs.length === 0 && (
           loading ? <Spinner /> : (
             <div className="grid gap-3">
               {results.map((a, i) => {

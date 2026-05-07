@@ -29,6 +29,19 @@ export type AnimeRow = {
 
 export type AnimeMatch = AnimeRow & { similarity: number };
 
+// Fetch just title + synopsis for seed anime (used in LLM prompts).
+export async function getAnimeBasicsByMalIds(
+  malIds: number[]
+): Promise<{ mal_id: number; title: string; title_english: string | null }[]> {
+  if (malIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("anime")
+    .select("mal_id, title, title_english")
+    .in("mal_id", malIds);
+  if (error) throw new Error(`Supabase fetch failed: ${error.message}`);
+  return (data ?? []) as { mal_id: number; title: string; title_english: string | null }[];
+}
+
 // pgvector serializes/deserializes vectors as either string "[1,2,3]" or array.
 type EmbeddingValue = string | number[];
 
@@ -105,10 +118,14 @@ export async function matchAnimeForUser(opts: {
   const userVec = computeUserVector(liked, dim);
   if (!userVec) throw new Error("Could not build user vector (no overlap with index)");
 
-  // 4) Call the pgvector RPC for nearest-neighbor search
+  // 4) Call the pgvector RPC for nearest-neighbor search.
+  //    Always exclude the seed anime themselves — they'd otherwise score
+  //    100% similar and dominate the results.
+  const fullExclude = Array.from(new Set([...excludeMalIds, ...likedMalIds]));
+
   const { data, error } = await supabase.rpc("match_anime", {
     query_vec: userVec,
-    exclude_mal_ids: excludeMalIds,
+    exclude_mal_ids: fullExclude,
     match_count: matchCount,
   });
 
