@@ -42,6 +42,26 @@ export async function getAnimeBasicsByMalIds(
   return (data ?? []) as { mal_id: number; title: string; title_english: string | null }[];
 }
 
+export type AnimeTagsRow = {
+  id: number;
+  tags: { name: string; rank: number }[];
+  episodes: number | null;
+  synopsis: string | null;
+};
+
+// Fetch tags + episodes + full synopsis for the top candidates (richer context for Groq).
+export async function getAnimeRichDataByIds(ids: number[]): Promise<Map<number, AnimeTagsRow>> {
+  if (ids.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from("anime")
+    .select("id, tags, episodes, synopsis")
+    .in("id", ids);
+  if (error) throw new Error(`Supabase fetch failed: ${error.message}`);
+  const map = new Map<number, AnimeTagsRow>();
+  for (const row of data ?? []) map.set(row.id, row as AnimeTagsRow);
+  return map;
+}
+
 // pgvector serializes/deserializes vectors as either string "[1,2,3]" or array.
 type EmbeddingValue = string | number[];
 
@@ -84,9 +104,16 @@ export async function matchAnimeForUser(opts: {
   likedMalIds: number[];
   likedScores: number[];           // same length as likedMalIds
   excludeMalIds?: number[];
+  allowedFormats?: string[];       // default ['TV', 'MOVIE'] — excludes OVA/ONA/SPECIAL noise
   matchCount?: number;
 }): Promise<AnimeMatch[]> {
-  const { likedMalIds, likedScores, excludeMalIds = [], matchCount = 10 } = opts;
+  const {
+    likedMalIds,
+    likedScores,
+    excludeMalIds = [],
+    allowedFormats = ["TV", "MOVIE"],
+    matchCount = 10,
+  } = opts;
 
   // 1) Fetch embeddings of the user's liked anime
   const { data: rows, error: fetchErr } = await supabase
@@ -126,6 +153,7 @@ export async function matchAnimeForUser(opts: {
   const { data, error } = await supabase.rpc("match_anime", {
     query_vec: userVec,
     exclude_mal_ids: fullExclude,
+    allowed_formats: allowedFormats,
     match_count: matchCount,
   });
 

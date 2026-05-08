@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { RecommendQuiz, type QuizResult } from "@/components/RecommendQuiz";
 
 type SearchItem = {
   id: number;
@@ -48,9 +49,12 @@ export default function HomePage() {
 
   const [selected, setSelected] = useState<SearchItem[]>([]);
   const [recs, setRecs] = useState<RecommendationItem[]>([]);
+  const [thinking, setThinking] = useState<string>("");
   const [seeds, setSeeds] = useState<SeedItem[]>([]);
   const [recLoading, setRecLoading] = useState(false);
   const [userText, setUserText] = useState("");
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [mylistSeedsLoaded, setMylistSeedsLoaded] = useState(false);
 
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
 
@@ -63,7 +67,10 @@ export default function HomePage() {
 
   useEffect(() => {
     setRecs([]);
+    setThinking("");
     setSeeds([]);
+    setQuizOpen(false);
+    setMylistSeedsLoaded(false);
   }, [selectedIds, mode]);
 
   async function handleSearch() {
@@ -100,7 +107,15 @@ export default function HomePage() {
     setSelected((prev) => prev.filter((a) => a.id !== id));
   }
 
-  async function handleManualRecommend() {
+  // Open the quiz when user has at least one pick
+  function startManualQuiz() {
+    if (selected.length === 0) return;
+    setError(null);
+    setRecs([]);
+    setQuizOpen(true);
+  }
+
+  async function handleManualRecommend(quiz: QuizResult) {
     if (selected.length === 0) return;
     setRecLoading(true);
     setError(null);
@@ -111,6 +126,12 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           likedAnimeIds: selected.map((a) => a.id),
+          favoriteMalId: quiz.favoriteId,
+          quiz: {
+            hookedBy: quiz.hookedBy,
+            mood: quiz.mood,
+            dislikes: quiz.dislikes,
+          },
           userText: userText.trim() || undefined,
         }),
       });
@@ -121,6 +142,8 @@ export default function HomePage() {
         return;
       }
       setRecs(data.results);
+      setThinking(data.thinking ?? "");
+      setQuizOpen(false);
     } catch {
       setError("Network error while recommending");
       setRecs([]);
@@ -129,15 +152,50 @@ export default function HomePage() {
     }
   }
 
-  async function handleListRecommend() {
+  // ── MAL list mode ──
+  // First click loads seeds (so the quiz has something to show as picks).
+  // Second click (after quiz) actually fetches recs with quiz signals.
+  async function startListQuiz() {
+    if (mylistSeedsLoaded && seeds.length > 0) {
+      setQuizOpen(true);
+      return;
+    }
+    // Fetch user's top-rated anime as seeds for the quiz
     setRecLoading(true);
     setError(null);
-    setSeeds([]);
+    try {
+      const res = await fetch("/api/recommend/fromlist?seeds_only=1", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data?.error ?? "Could not load your list");
+        return;
+      }
+      setSeeds(data.seeds ?? []);
+      setMylistSeedsLoaded(true);
+      setQuizOpen(true);
+    } catch {
+      setError("Network error while loading your list");
+    } finally {
+      setRecLoading(false);
+    }
+  }
+
+  async function handleListRecommend(quiz: QuizResult) {
+    setRecLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/recommend/fromlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userText: userText.trim() || undefined }),
+        body: JSON.stringify({
+          favoriteMalId: quiz.favoriteId,
+          quiz: {
+            hookedBy: quiz.hookedBy,
+            mood: quiz.mood,
+            dislikes: quiz.dislikes,
+          },
+          userText: userText.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -146,7 +204,8 @@ export default function HomePage() {
         return;
       }
       setRecs(data.results);
-      setSeeds(data.seeds ?? []);
+      setSeeds(data.seeds ?? seeds);
+      setQuizOpen(false);
     } catch {
       setError("Network error while recommending");
       setRecs([]);
@@ -222,11 +281,11 @@ export default function HomePage() {
         )}
 
         {/* ── MAL LIST MODE ───────────────────────────────────────────── */}
-        {mode === "mylist" && (
+        {mode === "mylist" && !quizOpen && (
           <div key="mylist" className="liquid-appear mb-8 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-6">
             <h2 className="font-bold text-white text-lg mb-1">Recommendations from your list</h2>
             <p className="text-slate-400 text-sm mb-6">
-              We&apos;ll use your 5 highest-rated completed anime as seeds and find what to watch next.
+              We&apos;ll use your 5 highest-rated completed anime as seeds, then ask a few quick questions to dial it in.
             </p>
 
             {seeds.length > 0 && (
@@ -247,24 +306,8 @@ export default function HomePage() {
               </div>
             )}
 
-            <div className="mb-4">
-              <label className="block text-xs uppercase tracking-widest text-slate-500 mb-2">
-                Anything specific? <span className="lowercase tracking-normal text-slate-600">(optional)</span>
-              </label>
-              <textarea
-                value={userText}
-                onChange={(e) => setUserText(e.target.value)}
-                placeholder="e.g. something light tonight · no romance · short series only"
-                rows={2}
-                maxLength={500}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
-                  placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
-                  focus:bg-white/10 transition-all duration-200 resize-none"
-              />
-            </div>
-
             <button
-              onClick={handleListRecommend}
+              onClick={startListQuiz}
               disabled={recLoading}
               className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
                 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500
@@ -274,15 +317,33 @@ export default function HomePage() {
               {recLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Finding recommendations…
+                  Loading your list…
                 </span>
-              ) : seeds.length > 0 ? "Refresh Recommendations →" : "Get Recommendations →"}
+              ) : recs.length > 0 ? "Try a different mood →" : "Start →"}
             </button>
           </div>
         )}
 
+        {/* ── QUIZ — shown for both modes when opened ─────────────────── */}
+        {quizOpen && mode === "mylist" && seeds.length > 0 && (
+          <RecommendQuiz
+            picks={seeds.map((s) => ({ id: s.id, title: s.title, imageUrl: s.imageUrl }))}
+            onComplete={(q) => handleListRecommend(q)}
+            onCancel={() => setQuizOpen(false)}
+            loading={recLoading}
+          />
+        )}
+        {quizOpen && mode === "manual" && selected.length > 0 && (
+          <RecommendQuiz
+            picks={selected.map((s) => ({ id: s.id, title: s.title, imageUrl: s.imageUrl }))}
+            onComplete={(q) => handleManualRecommend(q)}
+            onCancel={() => setQuizOpen(false)}
+            loading={recLoading}
+          />
+        )}
+
         {/* ── MANUAL MODE ─────────────────────────────────────────────── */}
-        {mode === "manual" && (
+        {mode === "manual" && !quizOpen && (
           <div key="manual" className="liquid-appear">
             {/* Selected panel */}
             <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
@@ -319,35 +380,14 @@ export default function HomePage() {
                 </div>
               )}
 
-              {selected.length > 0 && (
-                <div className="mb-4">
-                  <label className="block text-xs uppercase tracking-widest text-slate-500 mb-2">
-                    Anything specific? <span className="lowercase tracking-normal text-slate-600">(optional)</span>
-                  </label>
-                  <textarea
-                    value={userText}
-                    onChange={(e) => setUserText(e.target.value)}
-                    placeholder="e.g. something light tonight · no romance · short series only"
-                    rows={2}
-                    maxLength={500}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
-                      placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
-                      focus:bg-white/10 transition-all duration-200 resize-none"
-                  />
-                </div>
-              )}
-
-              <button onClick={handleManualRecommend} disabled={selected.length === 0 || recLoading}
+              <button onClick={startManualQuiz} disabled={selected.length === 0 || recLoading}
                 className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
                   bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500
                   shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40
                   disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98]">
-                {recLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Finding recommendations…
-                  </span>
-                ) : "Get Recommendations →"}
+                {selected.length === 0
+                  ? "Pick at least one anime to continue"
+                  : "Continue → 4 quick questions"}
               </button>
             </div>
 
@@ -381,8 +421,8 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Search results — only in manual mode, hidden once recs are shown */}
-        {mode === "manual" && recs.length === 0 && (
+        {/* Search results — only in manual mode, hidden once recs are shown or quiz is open */}
+        {mode === "manual" && recs.length === 0 && !quizOpen && (
           loading ? <Spinner /> : (
             <div className="grid gap-3">
               {results.map((a, i) => {
@@ -448,6 +488,21 @@ export default function HomePage() {
               <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Recommendations</h2>
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </div>
+
+            {/* LLM thinking panel — what the AI noticed about you */}
+            {thinking && (
+              <details className="mb-6 rounded-2xl border border-violet-500/20 bg-violet-500/5 backdrop-blur-sm overflow-hidden card-appear">
+                <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-3 hover:bg-violet-500/10 transition-colors duration-200">
+                  <span className="text-base">🧠</span>
+                  <span className="text-sm font-semibold text-violet-200">How the AI thought about your taste</span>
+                  <span className="ml-auto text-xs text-violet-400/60">click to expand</span>
+                </summary>
+                <div className="px-5 pb-5 pt-0">
+                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{thinking}</p>
+                </div>
+              </details>
+            )}
+
             <div className="grid gap-4">
               {recs.map((r, i) => (
                 <div key={r.id}

@@ -30,9 +30,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Optional natural-language preferences from the user (forwarded to Groq)
+  // ?seeds_only=1 → just return the user's top-rated anime as quiz seeds (no recs)
+  const seedsOnly = new URL(request.url).searchParams.get("seeds_only") === "1";
+
+  // Forwarded params from the page
   const body = await request.json().catch(() => null);
   const userText: unknown = body?.userText;
+  const favoriteMalId: unknown = body?.favoriteMalId;
+  const quiz: unknown = body?.quiz;
 
   const [completed, watching] = await Promise.all([
     fetchAllMALList(token, "completed"),
@@ -43,15 +48,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No completed anime found in your list" }, { status: 400 });
   }
 
-  // All watched IDs (excluded from recommendations regardless of rating)
   const excludeMalIds = [
     ...completed.map((e) => e.node.id),
     ...watching.map((e) => e.node.id),
   ];
 
-  // Use the user's ENTIRE rated history as signal — low scores are negative,
-  // high scores are positive. The pgvector RPC weights them as (score - 6.5),
-  // so a 10 pulls strongly toward similar anime, a 3 pushes away.
   const rated = completed.filter((e) => e.list_status.score > 0);
 
   if (rated.length === 0) {
@@ -59,6 +60,23 @@ export async function POST(request: NextRequest) {
       { error: "No rated anime found — rate some completed anime to get personalized recommendations" },
       { status: 400 }
     );
+  }
+
+  // Quiz seeds: top 15 highest-rated anime — gives the user a real choice
+  // of which favorite to talk about, not just an arbitrary top-5 cutoff.
+  const seedInfo = [...rated]
+    .sort((a, b) => b.list_status.score - a.list_status.score)
+    .slice(0, 15)
+    .map((e) => ({
+      id: e.node.id,
+      title: e.node.title,
+      imageUrl: e.node.main_picture?.medium ?? null,
+      score: e.list_status.score,
+    }));
+
+  // First-call (seeds_only): just return seeds for the quiz to display
+  if (seedsOnly) {
+    return NextResponse.json({ seeds: seedInfo });
   }
 
   const likedAnimeIds = rated.map((e) => e.node.id);
@@ -71,22 +89,18 @@ export async function POST(request: NextRequest) {
     `Excluding ${excludeMalIds.length} watched/watching from results.`
   );
 
-  // Show top 5 highest-rated as display seeds in the UI
-  const seedInfo = [...rated]
-    .sort((a, b) => b.list_status.score - a.list_status.score)
-    .slice(0, 5)
-    .map((e) => ({
-      id: e.node.id,
-      title: e.node.title,
-      imageUrl: e.node.main_picture?.medium ?? null,
-      score: e.list_status.score,
-    }));
-
   const baseUrl = new URL(request.url).origin;
   const recRes = await fetch(`${baseUrl}/api/recommend/v2`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ likedAnimeIds, likedScores, excludeMalIds, userText }),
+    body: JSON.stringify({
+      likedAnimeIds,
+      likedScores,
+      excludeMalIds,
+      userText,
+      favoriteMalId,
+      quiz,
+    }),
   });
 
   const recData = await recRes.json();

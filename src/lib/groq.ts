@@ -20,9 +20,15 @@ export type RerankedItem = {
   reason: string;    // 1-2 sentence personalized reason
 };
 
+export type RerankResponse = {
+  thinking: string;     // overall reasoning — what the LLM concluded about the user
+  results: RerankedItem[];
+};
+
 export type SeedSummary = {
   title: string;
-  user_score?: number; // 1-10 (only for MAL list mode)
+  user_score?: number;       // 1-10 (only for MAL list mode)
+  is_favorite?: boolean;     // user's #1 from quiz
 };
 
 export type CandidateSummary = {
@@ -30,8 +36,16 @@ export type CandidateSummary = {
   title: string;
   year: number | null;
   genres: string[];
-  synopsis_excerpt: string;  // first ~300 chars
+  top_tags: string[];        // top weighted tags from AniList (rank ≥ 60)
+  synopsis_excerpt: string;  // up to 600 chars
   similarity: number;        // 0-1 from embedding search
+  avg_score: number | null;
+};
+
+export type QuizSignals = {
+  hookedBy?: string;         // "story" | "atmosphere" | "characters" | freeform
+  mood?: string[];           // ["Mind-bending", "Emotional", ...]
+  dislikes?: string[];       // ["Romance focus", "Sad endings", ...]
 };
 
 // ── Re-rank + reason generation ──────────────────────────────────────────────
@@ -39,45 +53,104 @@ export type CandidateSummary = {
 export async function rerankWithReasons(opts: {
   seeds: SeedSummary[];
   userText?: string;
+  quiz?: QuizSignals;
   candidates: CandidateSummary[];
   pickCount: number;
-}): Promise<RerankedItem[]> {
-  const { seeds, userText, candidates, pickCount } = opts;
+}): Promise<RerankResponse> {
+  const { seeds, userText, quiz, candidates, pickCount } = opts;
 
-  const system = `You are an expert anime recommender. The user has shared anime they like
-(possibly with personal ratings). They may have written a note about what they're in the mood for.
-You will be given ${candidates.length} candidate anime that semantically match their taste.
+  const system = `You are a thoughtful anime recommender. You receive a user's profile and ${candidates.length} candidate anime. Your task is to select the ${pickCount} that genuinely fit them and write a SPECIFIC, PERSONAL reason for each.
 
-Your job:
-1. Pick the ${pickCount} best candidates considering BOTH similarity to their picks AND any preferences/exclusions in their note.
-2. For each pick, write ONE short, personal sentence (max 25 words) explaining why this fits.
-   Reference their seed anime by name when relevant. Don't repeat genre lists.
-3. If their note says they don't want something (e.g. "no romance"), exclude candidates that match.
+═══════════════════════════════════════════════════
+HARD RULES — never violate these
+═══════════════════════════════════════════════════
+1. Never recommend a sequel, prequel, or spin-off of any anime in the user's seeds OR of any other candidate. Always choose the FIRST entry of a series.
+2. Never recommend a recap, summary, OVA-only, or compilation movie.
+3. If the user's dislikes mention something explicit (e.g. "no romance", "no sad endings", "no ecchi"), exclude any candidate that prominently features it. When in doubt, drop it.
 
-Output strict JSON: {"results": [{"id": <number>, "reason": "<sentence>"}, ...]}.
-Only return ${pickCount} items. Use only the IDs from the candidate list.`;
+═══════════════════════════════════════════════════
+REASONING RULES — these matter as much as the picks
+═══════════════════════════════════════════════════
+GOAL: each reason is one specific sentence that could ONLY apply to this user, this anime, this moment.
 
+BANNED phrasings (these are the templates we're trying to escape):
+  ✗ "Similar to X, with Y and Z"
+  ✗ "Shares [genre] elements with X"
+  ✗ "Combines [trait] and [trait] like X"
+  ✗ "Has [trait] like X"
+  ✗ "Features a similar atmosphere to X"
+  ✗ Any sentence that just lists genres or pairs the candidate with a seed by similarity
+
+GOOD reasons mention concrete things:
+  ✓ A specific narrative device or plot mechanic
+  ✓ A specific tone (e.g. "quiet melancholy", "dry comedy", "kinetic urgency")
+  ✓ A specific theme the candidate handles in a particular way
+  ✓ A specific quality the user said they care about (from "what hooked you")
+  ✓ Why THIS picks fits THEIR mood — not just "matches X genre"
+
+If the user said they were hooked by characters, talk about characters in the candidate.
+If they said atmosphere, talk about pacing/mood/visual feel of the candidate.
+If they said story, talk about the narrative shape or stakes.
+
+LENGTH: 1 sentence, max 28 words. No leading throat-clearing ("This anime…", "If you liked…"). Lead with the substance.
+
+═══════════════════════════════════════════════════
+OUTPUT
+═══════════════════════════════════════════════════
+Return strict JSON in this exact shape:
+{
+  "thinking": "<2-3 sentences: what you noticed about the user's taste and how that shaped your picks. Be honest and specific. Mention any tradeoffs you made.>",
+  "results": [{"id": <int>, "reason": "<sentence>"}, ...]
+}
+Exactly ${pickCount} items in results. Use only IDs from the candidate list. Order from best to worst fit.`;
+
+  // Build the user message
   const seedsText = seeds
-    .map((s) => (s.user_score != null ? `• ${s.title} (rated ${s.user_score}/10)` : `• ${s.title}`))
+    .map((s) => {
+      const tag = s.is_favorite ? " ⭐ FAVORITE" : "";
+      const score = s.user_score != null ? ` (rated ${s.user_score}/10)` : "";
+      return `• ${s.title}${score}${tag}`;
+    })
     .join("\n");
 
+  const quizParts: string[] = [];
+  if (quiz?.hookedBy) {
+    quizParts.push(`HOOKED BY: ${quiz.hookedBy}`);
+  }
+  if (quiz?.mood && quiz.mood.length > 0) {
+    quizParts.push(`MOOD: ${quiz.mood.join(", ")}`);
+  }
+  if (quiz?.dislikes && quiz.dislikes.length > 0) {
+    quizParts.push(`DOES NOT WANT: ${quiz.dislikes.join(", ")}`);
+  }
+
   const candidatesText = candidates
-    .map(
-      (c) =>
-        `[id=${c.id}] ${c.title} (${c.year ?? "?"}) — genres: ${c.genres.slice(0, 4).join(", ") || "—"}\n` +
-        `  similarity=${(c.similarity * 100).toFixed(0)}%\n` +
-        `  ${c.synopsis_excerpt}`
-    )
+    .map((c) => {
+      const score = c.avg_score != null ? ` ${c.avg_score}%` : "";
+      return (
+        `[id=${c.id}] ${c.title} (${c.year ?? "?"})${score}\n` +
+        `  Genres: ${c.genres.join(", ") || "—"}\n` +
+        `  Top tags: ${c.top_tags.slice(0, 8).join(", ") || "—"}\n` +
+        `  Synopsis: ${c.synopsis_excerpt}`
+      );
+    })
     .join("\n\n");
 
   const user =
     `## What the user likes\n${seedsText}\n\n` +
-    (userText ? `## User's note\n${userText.trim()}\n\n` : "") +
+    (quizParts.length > 0 ? `## Quiz answers\n${quizParts.join("\n")}\n\n` : "") +
+    (userText ? `## Note from user\n${userText.trim()}\n\n` : "") +
     `## Candidates\n${candidatesText}`;
+
+  // Verbose logging so the developer can see exactly what Groq sees
+  console.log("\n═══════════════════ GROQ PROMPT ═══════════════════");
+  console.log("--- SYSTEM ---\n" + system);
+  console.log("\n--- USER MESSAGE ---\n" + user);
+  console.log("═══════════════════════════════════════════════════\n");
 
   const completion = await groq.chat.completions.create({
     model: DEFAULT_MODEL,
-    temperature: 0.5,
+    temperature: 0.7,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: system },
@@ -86,7 +159,11 @@ Only return ${pickCount} items. Use only the IDs from the candidate list.`;
   });
 
   const raw = completion.choices[0]?.message?.content ?? "{}";
-  let parsed: { results?: unknown };
+  console.log("\n═══════════════════ GROQ RESPONSE ═══════════════════");
+  console.log(raw);
+  console.log("═════════════════════════════════════════════════════\n");
+
+  let parsed: { thinking?: unknown; results?: unknown };
   try {
     parsed = JSON.parse(raw);
   } catch {
@@ -111,5 +188,7 @@ Only return ${pickCount} items. Use only the IDs from the candidate list.`;
     }
   }
 
-  return valid;
+  const thinking = typeof parsed.thinking === "string" ? parsed.thinking : "";
+
+  return { thinking, results: valid };
 }
