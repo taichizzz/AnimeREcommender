@@ -16,14 +16,14 @@ export type QuizResult = {
 };
 
 export const MOOD_OPTIONS = [
-  { label: "Emotional", icon: "🎭" },
-  { label: "Action",    icon: "⚔️" },
-  { label: "Funny",     icon: "😂" },
-  { label: "Mind-bending", icon: "🧠" },
-  { label: "Romantic",  icon: "💞" },
-  { label: "Chill",     icon: "🌙" },
-  { label: "Dark",      icon: "😱" },
-  { label: "Wholesome", icon: "🌸" },
+  { label: "Emotional" },
+  { label: "Action" },
+  { label: "Funny" },
+  { label: "Mind-bending" },
+  { label: "Romantic" },
+  { label: "Chill" },
+  { label: "Dark" },
+  { label: "Wholesome" },
 ];
 
 export const DISLIKE_OPTIONS = [
@@ -32,10 +32,10 @@ export const DISLIKE_OPTIONS = [
 ];
 
 const HOOKED_OPTIONS = [
-  { value: "story",      icon: "📖", label: "The story",      desc: "Plot, world, mystery" },
-  { value: "atmosphere", icon: "💭", label: "The atmosphere", desc: "Mood, pacing, vibe" },
-  { value: "characters", icon: "👥", label: "The characters", desc: "Relationships, growth" },
-  { value: "other",      icon: "✨", label: "Something else", desc: "Tell us in your words" },
+  { value: "story",      label: "The story",      desc: "Plot, world, mystery" },
+  { value: "atmosphere", label: "The atmosphere", desc: "Mood, pacing, vibe" },
+  { value: "characters", label: "The characters", desc: "Relationships, growth" },
+  { value: "other",      label: "Something else", desc: "Tell us in your words" },
 ];
 
 export function RecommendQuiz({
@@ -49,22 +49,29 @@ export function RecommendQuiz({
   onCancel: () => void;
   loading?: boolean;
 }) {
-  const [step, setStep] = useState(0);  // 0..3 (4 steps total)
+  // With only one pick, skip the "pick favorite" step entirely.
+  const skipFavStep = picks.length <= 1;
+  const initialStep = skipFavStep ? 1 : 0;
+
+  const [step, setStep] = useState(initialStep);
   const [favoriteId, setFavoriteId] = useState<number | null>(picks[0]?.id ?? null);
   const [hookedChoice, setHookedChoice] = useState<string>("");
   const [hookedText, setHookedText] = useState<string>("");
   const [mood, setMood] = useState<Set<string>>(new Set());
   const [dislikes, setDislikes] = useState<Set<string>>(new Set());
 
-  const totalSteps = 4;
+  const totalSteps = skipFavStep ? 3 : 4;
+  // The "visible" step number (1-indexed) for the progress dots + labels.
+  const visibleStep = step - initialStep;
 
   function next() {
-    if (step < totalSteps - 1) setStep(step + 1);
+    // Last internal step is always step 3; finish when reaching it
+    if (step < 3) setStep(step + 1);
     else finish();
   }
 
   function back() {
-    if (step > 0) setStep(step - 1);
+    if (step > initialStep) setStep(step - 1);
     else onCancel();
   }
 
@@ -108,9 +115,9 @@ export function RecommendQuiz({
           <div
             key={i}
             className={`h-2 rounded-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
-              ${i === step
+              ${i === visibleStep
                 ? "bg-gradient-to-r from-violet-500 to-purple-500 w-8 shadow-lg shadow-violet-500/40"
-                : i < step
+                : i < visibleStep
                   ? "w-2 bg-violet-500/40"
                   : "w-2 bg-white/15"}`}
           />
@@ -122,7 +129,7 @@ export function RecommendQuiz({
         {/* ── Step 0: pick favorite ───────────────────────────── */}
         {step === 0 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step 1 of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-6 leading-tight">
               Which is your <span className="bg-gradient-to-r from-violet-400 to-purple-300 bg-clip-text text-transparent">absolute favorite</span>?
             </h2>
@@ -153,7 +160,7 @@ export function RecommendQuiz({
         {/* ── Step 1: what hooked you ─────────────────────────── */}
         {step === 1 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step 2 of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-6 leading-tight">
               What hooked you about{" "}
               <span className="bg-gradient-to-r from-violet-400 to-purple-300 bg-clip-text text-transparent">
@@ -170,8 +177,7 @@ export function RecommendQuiz({
                       ? "border-violet-500 bg-violet-500/10"
                       : "border-white/10 bg-white/5 hover:border-violet-400/40 hover:-translate-y-0.5"}`}
                 >
-                  <div className="text-3xl mb-2">{opt.icon}</div>
-                  <div className="font-bold text-base">{opt.label}</div>
+                  <div className="font-bold text-base mb-1">{opt.label}</div>
                   <div className="text-xs text-slate-400">{opt.desc}</div>
                 </button>
               ))}
@@ -193,7 +199,7 @@ export function RecommendQuiz({
         {/* ── Step 2: mood ─────────────────────────────────────── */}
         {step === 2 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step 3 of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-2 leading-tight">
               What are you in the <span className="bg-gradient-to-r from-violet-400 to-purple-300 bg-clip-text text-transparent">mood for</span>?
             </h2>
@@ -208,7 +214,7 @@ export function RecommendQuiz({
                       ? "border-violet-500 bg-violet-500/20 text-white"
                       : "border-white/10 bg-white/5 text-slate-300 hover:border-violet-400/40"}`}
                 >
-                  {m.icon} {m.label}
+                  {m.label}
                 </button>
               ))}
             </div>
@@ -218,7 +224,7 @@ export function RecommendQuiz({
         {/* ── Step 3: dislikes ─────────────────────────────────── */}
         {step === 3 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step 4 of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-2 leading-tight">
               Anything you <span className="bg-gradient-to-r from-rose-400 to-red-400 bg-clip-text text-transparent">don&apos;t want</span>?
             </h2>
@@ -233,7 +239,7 @@ export function RecommendQuiz({
                       ? "border-rose-500/50 bg-rose-500/15 text-rose-200"
                       : "border-white/10 bg-white/5 text-slate-300 hover:border-rose-400/30"}`}
                 >
-                  ❌ {d}
+                  {d}
                 </button>
               ))}
             </div>
@@ -267,7 +273,7 @@ export function RecommendQuiz({
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               Finding your matches…
             </span>
-          ) : step === totalSteps - 1 ? (
+          ) : step === 3 ? (
             "Get my recommendations →"
           ) : (
             "Continue →"

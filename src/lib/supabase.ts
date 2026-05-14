@@ -106,6 +106,7 @@ export async function matchAnimeForUser(opts: {
   excludeMalIds?: number[];
   allowedFormats?: string[];       // default ['TV', 'MOVIE'] — excludes OVA/ONA/SPECIAL noise
   matchCount?: number;
+  useCF?: boolean;                 // true = collaborative filtering, false = synopsis embeddings
 }): Promise<AnimeMatch[]> {
   const {
     likedMalIds,
@@ -113,17 +114,25 @@ export async function matchAnimeForUser(opts: {
     excludeMalIds = [],
     allowedFormats = ["TV", "MOVIE"],
     matchCount = 10,
+    useCF = false,
   } = opts;
+
+  const embeddingColumn = useCF ? "cf_embedding" : "embedding";
+  const rpcName = useCF ? "match_anime_cf" : "match_anime";
 
   // 1) Fetch embeddings of the user's liked anime
   const { data: rows, error: fetchErr } = await supabase
     .from("anime")
-    .select("mal_id, embedding")
+    .select(`mal_id, ${embeddingColumn}`)
     .in("mal_id", likedMalIds);
 
   if (fetchErr) throw new Error(`Supabase fetch failed: ${fetchErr.message}`);
   if (!rows || rows.length === 0) {
-    throw new Error("None of your liked anime are in the index yet");
+    throw new Error(
+      useCF
+        ? "None of your liked anime are in the CF index yet — they need to be popular enough to appear in the Kaggle dataset"
+        : "None of your liked anime are in the index yet"
+    );
   }
 
   // 2) Pair each row with its score (some MAL IDs may be missing from index)
@@ -133,7 +142,8 @@ export async function matchAnimeForUser(opts: {
   const liked: { embedding: number[]; score: number }[] = [];
   let dim = 0;
   for (const r of rows) {
-    const emb = parseEmbedding(r.embedding as EmbeddingValue);
+    const rawEmb = (r as Record<string, unknown>)[embeddingColumn] as EmbeddingValue | null;
+    const emb = parseEmbedding(rawEmb);
     if (!emb || r.mal_id == null) continue;
     const score = scoreByMal.get(r.mal_id);
     if (score == null) continue;
@@ -150,7 +160,7 @@ export async function matchAnimeForUser(opts: {
   //    100% similar and dominate the results.
   const fullExclude = Array.from(new Set([...excludeMalIds, ...likedMalIds]));
 
-  const { data, error } = await supabase.rpc("match_anime", {
+  const { data, error } = await supabase.rpc(rpcName, {
     query_vec: userVec,
     exclude_mal_ids: fullExclude,
     allowed_formats: allowedFormats,

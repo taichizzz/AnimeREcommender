@@ -91,16 +91,36 @@ export async function POST(request: Request) {
   const excludeMalIds = isNumberArray(exclude) ? exclude : [];
 
   try {
-    // 1) Get a wide pool of candidates from pgvector
-    const allMatches = await matchAnimeForUser({
-      likedMalIds: liked,
-      likedScores,
-      excludeMalIds,
-      matchCount: CANDIDATE_POOL,
-    });
+    // 1) Get a wide pool of candidates from pgvector.
+    //    Try CF first (better quality). If none of the user's seeds are in the
+    //    CF index (uncommon for popular picks), fall back to synopsis.
+    let engineUsed: "cf" | "synopsis" = "cf";
+    let allMatches;
+    try {
+      allMatches = await matchAnimeForUser({
+        likedMalIds: liked,
+        likedScores,
+        excludeMalIds,
+        matchCount: CANDIDATE_POOL,
+        useCF: true,
+      });
+    } catch (cfErr) {
+      // Any CF-side failure (seeds missing from CF index, no usable embeddings,
+      // empty user vector, etc.) → fall back to synopsis embeddings, which
+      // cover ~14k anime vs ~7.7k for CF.
+      console.log("[v2] CF retrieval failed, falling back to synopsis:", String(cfErr));
+      engineUsed = "synopsis";
+      allMatches = await matchAnimeForUser({
+        likedMalIds: liked,
+        likedScores,
+        excludeMalIds,
+        matchCount: CANDIDATE_POOL,
+        useCF: false,
+      });
+    }
 
     if (allMatches.length === 0) {
-      return NextResponse.json({ results: [] });
+      return NextResponse.json({ results: [], engineUsed });
     }
 
     // 2) Filter out candidates that match user's structured dislikes
@@ -197,7 +217,7 @@ export async function POST(request: Request) {
           `Genres: ${(m.genres ?? []).slice(0, 3).join(", ") || "—"}.`,
     }));
 
-    return NextResponse.json({ results, llmUsed, thinking });
+    return NextResponse.json({ results, llmUsed, thinking, engineUsed });
   } catch (err) {
     console.error("[/api/recommend/v2] error:", err);
     return NextResponse.json(
