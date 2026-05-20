@@ -89,23 +89,29 @@ export default function LandingPage() {
             />
           </ol>
 
-          {/* CTA — the ring itself is the clickable target */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          {/* CTA — centered. Ring is the clickable target. */}
+          <div className="flex flex-col items-center gap-8 text-center mt-4 mb-8">
             <Link
               href="/recommend"
               aria-label="Get Started"
-              className="inline-block cursor-pointer group"
+              className="relative inline-flex items-center justify-center cursor-pointer group"
             >
+              {/* Invisible hit-area so the whole ring interior is clickable */}
+              <span className="absolute inset-[-18px] z-0 rounded-full" aria-hidden="true" />
               <WobblyRing
+                className="relative z-10"
+                shape="auto"
                 strokeColor="rgb(196, 181, 253)"
-                strokeWidth={1.75}
-                wobbleAmp={7}
-                cursorReach={300}
-                cursorPull={20}
+                strokeWidth={1.5}
+                wobbleAmp={3}
+                cursorReach={180}
+                cursorPull={12}
+                padX={14}
+                padY={10}
               >
                 <span
-                  className="block px-8 py-5 text-lg font-bold tracking-wide text-white
-                    transition-colors duration-200 group-hover:text-violet-200"
+                  className="block px-10 py-4 text-base font-bold tracking-wide text-white
+                    rounded-full transition-colors duration-200 group-hover:text-violet-200"
                 >
                   Get Started →
                 </span>

@@ -1,12 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { RecommendQuiz, type QuizResult } from "@/components/RecommendQuiz";
-import {
-  SearchResultsLoadingList,
-  RecommendationsLoadingList,
-} from "@/components/Skeletons";
+import { RecommendationsLoadingList } from "@/components/Skeletons";
 
 type SearchItem = {
   id: number;
@@ -55,6 +52,8 @@ export default function RecommendPage() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [mylistSeedsLoaded, setMylistSeedsLoaded] = useState(false);
   const [expandedRecIds, setExpandedRecIds] = useState<Set<number>>(new Set());
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
 
@@ -83,24 +82,51 @@ export default function RecommendPage() {
     });
   }
 
-  async function handleSearch() {
+  // Debounced typeahead — auto-search 300ms after the user stops typing
+  useEffect(() => {
     const q = query.trim();
-    if (!q) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      if (!res.ok) { setError(data?.error ?? "Search failed"); setResults([]); return; }
-      setResults(data.results);
-      setSearchKey((k) => k + 1);
-    } catch {
-      setError("Network error while searching");
+    if (!q) {
       setResults([]);
-    } finally {
-      setLoading(false);
+      return;
     }
-  }
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (res.ok) {
+          setResults(data.results ?? []);
+          setSearchKey((k) => k + 1);
+          setShowDropdown(true);
+        }
+      } catch {
+        // Silent — user can keep typing
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  // Close dropdown on Esc
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setShowDropdown(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   function addToSelected(item: SearchItem) {
     if (selectedIds.has(item.id)) return;
@@ -394,24 +420,80 @@ export default function RecommendPage() {
               </button>
             </div>
 
-            <div className="flex gap-3 mb-4">
-              <input value={query} onChange={(e) => setQuery(e.target.value)}
-                placeholder="Try: Naruto, Attack on Titan, Frieren…"
-                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
+            {/* Typeahead search — dropdown shows live results as you type */}
+            <div ref={searchRef} className="relative mb-4">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
+                placeholder="Type to search: Naruto, Attack on Titan, Frieren…"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
                   placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
-                  focus:bg-white/10 transition-all duration-200" />
-              <button onClick={handleSearch} disabled={loading}
-                className="px-6 py-3 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/15
-                  border border-white/10 hover:border-white/20 transition-all duration-200
-                  disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]">
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Searching
-                  </span>
-                ) : "Search"}
-              </button>
+                  focus:bg-white/10 transition-all duration-200"
+              />
+              {loading && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin block" />
+                </span>
+              )}
+
+              {/* Dropdown */}
+              {showDropdown && query.trim().length > 0 && results.length > 0 && (
+                <div
+                  className="absolute left-0 right-0 top-full mt-2 z-50 max-h-[420px] overflow-y-auto
+                    rounded-xl border border-white/10 bg-[#13131f]/95 backdrop-blur-md
+                    shadow-2xl shadow-black/50 liquid-appear
+                    [scrollbar-width:thin] [scrollbar-color:rgba(124,58,237,0.4)_transparent]"
+                >
+                  {results.slice(0, 10).map((a, i) => {
+                    const isSelected = selectedIds.has(a.id);
+                    const atCap = !isSelected && selected.length >= 10;
+                    return (
+                      <button
+                        key={`${searchKey}-${i}`}
+                        type="button"
+                        disabled={atCap}
+                        onClick={() => {
+                          if (isSelected) removeFromSelected(a.id);
+                          else addToSelected(a);
+                        }}
+                        className={`w-full text-left flex gap-3 items-center px-3 py-2.5 border-b border-white/5 last:border-b-0
+                          transition-all duration-150
+                          ${atCap
+                            ? "opacity-40 cursor-not-allowed"
+                            : isSelected
+                              ? "bg-violet-500/10 hover:bg-red-500/10"
+                              : "hover:bg-violet-500/10"}`}
+                      >
+                        <div className="flex-shrink-0">
+                          {a.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={a.imageUrl} alt={a.title}
+                              className="w-10 rounded object-cover"
+                              style={{ height: "56px" }} />
+                          ) : (
+                            <div className="w-10 rounded bg-white/10" style={{ height: "56px" }} />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-white truncate">{a.title}</div>
+                          <div className="text-xs text-slate-500">
+                            {a.year ?? "?"} · ⭐ {a.score ?? "?"}
+                          </div>
+                        </div>
+                        <span className={`flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-md
+                          ${isSelected
+                            ? "bg-violet-500/20 text-violet-300 border border-violet-500/40"
+                            : atCap
+                              ? "text-slate-500"
+                              : "bg-white/10 text-slate-300 border border-white/10"}`}>
+                          {isSelected ? "✓ Added" : atCap ? "Max" : "+ Add"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -420,61 +502,6 @@ export default function RecommendPage() {
           <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
             {error}
           </div>
-        )}
-
-        {mode === "manual" && recs.length === 0 && !quizOpen && (
-          loading ? <SearchResultsLoadingList /> : (
-            <div className="grid gap-3">
-              {results.map((a, i) => {
-                const isSelected = selectedIds.has(a.id);
-                return (
-                  <div key={`${searchKey}-${i}`}
-                    className={`card-appear flex gap-4 rounded-2xl border p-4 transition-all duration-200 hover:-translate-y-0.5
-                      ${isSelected
-                        ? "border-violet-500/50 bg-violet-500/10 shadow-lg shadow-violet-500/10"
-                        : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8 hover:shadow-lg hover:shadow-black/30"
-                      }`}
-                    style={{ animationDelay: `${i * 60}ms` }}>
-                    <div className="flex-shrink-0">
-                      {a.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={a.imageUrl} alt={a.title} className="w-16 object-cover rounded-lg" style={{ height: "88px" }} />
-                      ) : (
-                        <div className="w-16 rounded-lg bg-white/10" style={{ height: "88px" }} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-                        <h3 className="font-semibold text-white">{a.title}</h3>
-                        <span className="text-xs text-slate-500">{a.year ?? "?"} · ⭐ {a.score ?? "?"}</span>
-                      </div>
-                      <p className="text-sm text-slate-400 leading-relaxed line-clamp-3">
-                        {a.synopsis ?? "No synopsis available."}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0 flex items-start pt-0.5">
-                      {isSelected ? (
-                        <button onClick={() => removeFromSelected(a.id)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold
-                            bg-violet-500/20 text-violet-300 border border-violet-500/30
-                            hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all duration-200">
-                          ✓ Added
-                        </button>
-                      ) : (
-                        <button onClick={() => addToSelected(a)} disabled={selected.length >= 10}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold
-                            bg-white/10 text-slate-300 border border-white/10
-                            hover:bg-violet-500/20 hover:text-violet-300 hover:border-violet-500/30
-                            transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed">
-                          + Select
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
         )}
 
         {recLoading && !quizOpen && <RecommendationsLoadingList />}
@@ -530,7 +557,7 @@ export default function RecommendPage() {
             {thinking && (
               <details className="mb-6 rounded-2xl border border-violet-500/20 bg-violet-500/5 backdrop-blur-sm overflow-hidden card-appear">
                 <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-3 hover:bg-violet-500/10 transition-colors duration-200">
-                  <span className="text-sm font-semibold text-violet-200">How the AI thought about your taste</span>
+                  <span className="text-sm font-semibold text-violet-200">How Animer thought about your taste</span>
                   <span className="ml-auto text-xs text-violet-400/60">click to expand</span>
                 </summary>
                 <div className="px-5 pb-5 pt-0">
@@ -542,10 +569,6 @@ export default function RecommendPage() {
             <div className="grid gap-4">
               {recs.map((r, i) => {
                 const expanded = expandedRecIds.has(r.id);
-                const seedChipLabels =
-                  mode === "manual"
-                    ? selected.map((s) => s.title)
-                    : seeds.map((s) => s.title);
 
                 return (
                   <div key={r.id}
@@ -564,11 +587,11 @@ export default function RecommendPage() {
                         {r.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={r.imageUrl} alt={r.title}
-                            className={`object-cover rounded-lg transition-all duration-300 ${expanded ? "w-24" : "w-16"}`}
-                            style={{ height: expanded ? "132px" : "88px" }} />
+                            className={`object-cover rounded-lg transition-all duration-300 ${expanded ? "w-44 shadow-xl shadow-black/40" : "w-16"}`}
+                            style={{ height: expanded ? "240px" : "88px" }} />
                         ) : (
-                          <div className={`rounded-lg bg-white/10 transition-all duration-300 ${expanded ? "w-24" : "w-16"}`}
-                            style={{ height: expanded ? "132px" : "88px" }} />
+                          <div className={`rounded-lg bg-white/10 transition-all duration-300 ${expanded ? "w-44" : "w-16"}`}
+                            style={{ height: expanded ? "240px" : "88px" }} />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -615,7 +638,7 @@ export default function RecommendPage() {
 
                     {/* Expanded section */}
                     {expanded && (
-                      <div className="liquid-appear mt-5 pt-5 border-t border-white/10 space-y-4">
+                      <div className="liquid-appear mt-5 pt-5 border-t border-white/10 space-y-5">
                         {r.synopsis && (
                           <div>
                             <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Synopsis</p>
@@ -625,33 +648,20 @@ export default function RecommendPage() {
                           </div>
                         )}
 
-                        {seedChipLabels.length > 0 && (
-                          <div>
-                            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Recommended because</p>
-                            <div className="flex flex-wrap gap-2">
-                              {seedChipLabels.map((label, j) => (
-                                <span key={j}
-                                  className="text-xs font-medium text-violet-200 bg-violet-500/15 border border-violet-500/30 rounded-full px-3 py-1">
-                                  You liked {label}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
                         {r.malId != null && (
-                          <div>
-                            <a
-                              href={`https://myanimelist.net/anime/${r.malId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-300 hover:text-violet-200
-                                border border-violet-500/40 hover:border-violet-400 rounded-full px-3 py-1.5 transition-all duration-200"
-                            >
-                              View on MyAnimeList ↗
-                            </a>
-                          </div>
+                          <a
+                            href={`https://myanimelist.net/anime/${r.malId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-2 text-sm font-bold text-white
+                              bg-gradient-to-r from-violet-600 to-purple-600
+                              hover:from-violet-500 hover:to-purple-500
+                              shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40
+                              rounded-xl px-5 py-3 transition-all duration-200 active:scale-[0.98]"
+                          >
+                            View on MyAnimeList ↗
+                          </a>
                         )}
                       </div>
                     )}

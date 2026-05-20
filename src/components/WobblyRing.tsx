@@ -19,6 +19,9 @@ export function WobblyRing({
   wobbleAmp = 7,
   cursorReach = 240,         // pixels — how far the cursor influences the ring
   cursorPull = 16,           // how much the cursor distorts (in px) at max
+  shape = "auto",            // "circle" forces equal rx/ry so the ring is round
+  padX: propPadX,
+  padY: propPadY,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -27,6 +30,9 @@ export function WobblyRing({
   wobbleAmp?: number;
   cursorReach?: number;
   cursorPull?: number;
+  shape?: "auto" | "circle";
+  padX?: number;
+  padY?: number;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
@@ -67,9 +73,15 @@ export function WobblyRing({
       const cy = rect.height / 2;
 
       // base ellipse radii — inset so the ring sits around (not over) the child
-      const padX = 22, padY = 14;
-      const rx = rect.width / 2 + padX;
-      const ry = rect.height / 2 + padY;
+      const padX = propPadX ?? 22, padY = propPadY ?? 14;
+      let rx = rect.width / 2 + padX;
+      let ry = rect.height / 2 + padY;
+      // shape="circle" → force equal radii using the larger of the two,
+      // producing a near-perfect round ring even around wide text.
+      if (shape === "circle") {
+        const r = Math.max(rx, ry);
+        rx = ry = r;
+      }
 
       const ts = t / 1000;
 
@@ -113,7 +125,7 @@ export function WobblyRing({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseleave", onLeave);
     };
-  }, [wobbleAmp, cursorReach, cursorPull]);
+  }, [wobbleAmp, cursorReach, cursorPull, shape, propPadX, propPadY]);
 
   return (
     <div ref={wrapRef} className={`relative inline-block ${className}`}>
