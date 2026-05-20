@@ -19,10 +19,13 @@ type SearchItem = {
 
 type RecommendationItem = {
   id: number;
+  malId: number | null;
   title: string;
   imageUrl: string | null;
   score: number | null;
   year: number | null;
+  synopsis: string | null;
+  genres: string[];
   reason: string;
 };
 
@@ -51,6 +54,7 @@ export default function RecommendPage() {
   const [userText, setUserText] = useState("");
   const [quizOpen, setQuizOpen] = useState(false);
   const [mylistSeedsLoaded, setMylistSeedsLoaded] = useState(false);
+  const [expandedRecIds, setExpandedRecIds] = useState<Set<number>>(new Set());
 
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
 
@@ -67,7 +71,17 @@ export default function RecommendPage() {
     setSeeds([]);
     setQuizOpen(false);
     setMylistSeedsLoaded(false);
+    setExpandedRecIds(new Set());
   }, [selectedIds, mode]);
+
+  function toggleExpand(id: number) {
+    setExpandedRecIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   async function handleSearch() {
     const q = query.trim();
@@ -526,30 +540,124 @@ export default function RecommendPage() {
             )}
 
             <div className="grid gap-4">
-              {recs.map((r, i) => (
-                <div key={r.id}
-                  className="card-appear flex gap-4 rounded-2xl border border-white/10 bg-white/5 p-4
-                    transition-all duration-200 hover:-translate-y-0.5
-                    hover:border-white/20 hover:shadow-lg hover:shadow-black/30"
-                  style={{ animationDelay: `${i * 80}ms` }}>
-                  <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
-                    <span className="text-xs font-mono text-slate-600">#{i + 1}</span>
-                    {r.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={r.imageUrl} alt={r.title} className="w-16 object-cover rounded-lg" style={{ height: "88px" }} />
-                    ) : (
-                      <div className="w-16 rounded-lg bg-white/10" style={{ height: "88px" }} />
+              {recs.map((r, i) => {
+                const expanded = expandedRecIds.has(r.id);
+                const seedChipLabels =
+                  mode === "manual"
+                    ? selected.map((s) => s.title)
+                    : seeds.map((s) => s.title);
+
+                return (
+                  <div key={r.id}
+                    className={`card-appear rounded-2xl border bg-white/5 p-4
+                      transition-all duration-300 cursor-pointer
+                      ${expanded
+                        ? "border-violet-500/40 bg-violet-500/[0.04] shadow-lg shadow-violet-500/10"
+                        : "border-white/10 hover:border-white/20 hover:bg-white/8 hover:shadow-lg hover:shadow-black/30 hover:-translate-y-0.5"}`}
+                    style={{ animationDelay: `${i * 80}ms` }}
+                    onClick={() => toggleExpand(r.id)}
+                  >
+                    {/* Compact row — always visible */}
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
+                        <span className="text-xs font-mono text-slate-600">#{i + 1}</span>
+                        {r.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={r.imageUrl} alt={r.title}
+                            className={`object-cover rounded-lg transition-all duration-300 ${expanded ? "w-24" : "w-16"}`}
+                            style={{ height: expanded ? "132px" : "88px" }} />
+                        ) : (
+                          <div className={`rounded-lg bg-white/10 transition-all duration-300 ${expanded ? "w-24" : "w-16"}`}
+                            style={{ height: expanded ? "132px" : "88px" }} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                          {r.malId != null ? (
+                            <a
+                              href={`https://myanimelist.net/anime/${r.malId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-semibold text-white hover:text-violet-300 hover:underline underline-offset-2 transition-colors"
+                            >
+                              {r.title}
+                            </a>
+                          ) : (
+                            <h3 className="font-semibold text-white">{r.title}</h3>
+                          )}
+                          <span className="text-xs text-slate-500">
+                            {r.year ?? "?"} · ⭐ {r.score != null ? `${r.score}%` : "?"}
+                          </span>
+                          {r.genres.slice(0, 3).map((g) => (
+                            <span key={g} className="text-[10px] uppercase tracking-wide text-slate-500 bg-white/5 border border-white/10 rounded px-1.5 py-0.5">
+                              {g}
+                            </span>
+                          ))}
+                        </div>
+                        <p className={`text-sm text-slate-400 leading-relaxed ${expanded ? "" : "line-clamp-2"}`}>
+                          {r.reason}
+                        </p>
+
+                        {/* Expand affordance arrow */}
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-slate-500">
+                            {expanded ? "Hide details" : "Show details"}
+                          </span>
+                          <span
+                            className={`text-violet-400/70 text-xs transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+                          >
+                            ▾
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded section */}
+                    {expanded && (
+                      <div className="liquid-appear mt-5 pt-5 border-t border-white/10 space-y-4">
+                        {r.synopsis && (
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Synopsis</p>
+                            <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+                              {r.synopsis}
+                            </p>
+                          </div>
+                        )}
+
+                        {seedChipLabels.length > 0 && (
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Recommended because</p>
+                            <div className="flex flex-wrap gap-2">
+                              {seedChipLabels.map((label, j) => (
+                                <span key={j}
+                                  className="text-xs font-medium text-violet-200 bg-violet-500/15 border border-violet-500/30 rounded-full px-3 py-1">
+                                  You liked {label}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {r.malId != null && (
+                          <div>
+                            <a
+                              href={`https://myanimelist.net/anime/${r.malId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-300 hover:text-violet-200
+                                border border-violet-500/40 hover:border-violet-400 rounded-full px-3 py-1.5 transition-all duration-200"
+                            >
+                              View on MyAnimeList ↗
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
-                      <h3 className="font-semibold text-white">{r.title}</h3>
-                      <span className="text-xs text-slate-500">{r.year ?? "?"} · ⭐ {r.score != null ? `${r.score}%` : "?"}</span>
-                    </div>
-                    <p className="text-sm text-slate-400 leading-relaxed">{r.reason}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}

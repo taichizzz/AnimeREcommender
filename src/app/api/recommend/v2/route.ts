@@ -211,6 +211,8 @@ export async function POST(request: Request) {
       imageUrl: m.cover_url,
       score: m.avg_score,
       year: m.year,
+      synopsis: m.synopsis,
+      genres: m.genres ?? [],
       reason:
         reasons.get(m.id) ??
         `Semantic match (${(m.similarity * 100).toFixed(0)}% similar). ` +
