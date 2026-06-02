@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type QuizPick = {
   id: number;
@@ -133,27 +133,7 @@ export function RecommendQuiz({
             <h2 className="text-2xl font-extrabold mb-6 leading-tight">
               Which is your <span className="bg-gradient-to-r from-violet-400 to-purple-300 bg-clip-text text-transparent">absolute favorite</span>?
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2 max-h-[60vh] overflow-y-auto pr-1
-              [scrollbar-width:thin] [scrollbar-color:rgba(124,58,237,0.4)_transparent]">
-              {picks.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setFavoriteId(p.id)}
-                  className={`group rounded-xl border-2 p-3 text-left transition-all duration-200
-                    ${favoriteId === p.id
-                      ? "border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/20"
-                      : "border-white/10 bg-white/5 hover:border-violet-400/40 hover:-translate-y-0.5"}`}
-                >
-                  {p.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.imageUrl} alt={p.title} className="w-full aspect-[3/4] object-cover rounded-lg mb-2" />
-                  ) : (
-                    <div className="w-full aspect-[3/4] rounded-lg bg-white/10 mb-2" />
-                  )}
-                  <div className="text-sm font-semibold truncate">{p.title}</div>
-                </button>
-              ))}
-            </div>
+            <FavoriteWheel picks={picks} favoriteId={favoriteId} onSelect={setFavoriteId} />
           </>
         )}
 
@@ -280,6 +260,232 @@ export function RecommendQuiz({
           )}
         </button>
       </div>
+    </div>
+  );
+}
+
+// Geometry of the wheel.
+const CARD_W = 192;          // px (w-48)
+const SPACING = 132;         // px between adjacent card centers (cards overlap a bit)
+
+/**
+ * An infinite 3D "wheel" for picking the favorite. Cards are absolutely
+ * positioned by transforms based on their distance (in card units) from the
+ * center, and that distance wraps modulo N — so the card to the LEFT of the
+ * first is the LAST one, and the wheel loops forever. Drag it, flick it, or
+ * mouse-wheel it; the centered card is the selected favorite.
+ *
+ * Dragging repositions synchronously on each pointer-move (no rAF needed, so it
+ * tracks the finger even under throttling); rAF is used only for the momentum /
+ * snap glide after release and stops as soon as the wheel settles.
+ */
+function FavoriteWheel({
+  picks,
+  favoriteId,
+  onSelect,
+}: {
+  picks: QuizPick[];
+  favoriteId: number | null;
+  onSelect: (id: number) => void;
+}) {
+  const n = picks.length;
+  const initIndex = Math.max(0, picks.findIndex((p) => p.id === (favoriteId ?? picks[0]?.id)));
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [focusedId, setFocusedId] = useState<number | null>(picks[initIndex]?.id ?? null);
+
+  // Animation state lives in refs so motion never triggers React re-renders.
+  const offsetRef = useRef(initIndex);   // current center position (float, in card units)
+  const targetRef = useRef(initIndex);   // where we're gliding toward
+  const focusedIdRef = useRef(focusedId);
+  const suppressClickRef = useRef(false);
+  // Bridges so the React onClick handler can drive logic that lives in the effect.
+  const centerCardRef = useRef<(i: number) => void>(() => {});
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || n === 0) return;
+    let raf = 0;
+    let wheelTimer: ReturnType<typeof setTimeout> | undefined;
+
+    // Shortest signed distance from `off` to card `i`, wrapped into (-n/2, n/2].
+    const wrappedDelta = (i: number, off: number) => {
+      let d = ((i - off) % n + n) % n;
+      if (d > n / 2) d -= n;
+      return d;
+    };
+
+    // Cards visible per side — kept below n/2 so a card fully fades before it
+    // wraps to the other side (no popping).
+    const span = Math.min(3, n / 2);
+
+    const positionCards = () => {
+      const off = offsetRef.current;
+      cardRefs.current.forEach((el, i) => {
+        if (!el) return;
+        const delta = wrappedDelta(i, off);
+        const absd = Math.abs(delta);
+        if (absd > span + 0.01) {
+          el.style.opacity = "0";
+          el.style.pointerEvents = "none";
+          el.style.transform = "translate(-50%, -50%) scale(0.4)";
+          return;
+        }
+        const x = delta * SPACING;
+        const scale = Math.max(0.6, 1 - absd * 0.16);
+        const rotateY = Math.max(-52, Math.min(52, -delta * 22));
+        const z = -absd * 70;
+        el.style.transform =
+          `translate(-50%, -50%) translateX(${x}px) translateZ(${z}px) rotateY(${rotateY}deg) scale(${scale})`;
+        el.style.opacity = String(Math.max(0.25, 1 - (absd / span) * 0.9));
+        el.style.zIndex = String(1000 - Math.round(absd * 10));
+        el.style.pointerEvents = "auto";
+      });
+
+      const centerIdx = ((Math.round(off) % n) + n) % n;
+      const id = picks[centerIdx]?.id ?? null;
+      if (id !== null && id !== focusedIdRef.current) {
+        focusedIdRef.current = id;
+        setFocusedId(id);
+        onSelect(id);
+      }
+    };
+
+    // rAF glide toward target — runs only while there's distance left to cover.
+    const glide = () => {
+      const diff = targetRef.current - offsetRef.current;
+      if (Math.abs(diff) > 0.001) {
+        offsetRef.current += diff * 0.2;
+        positionCards();
+        raf = requestAnimationFrame(glide);
+      } else {
+        offsetRef.current = targetRef.current;
+        positionCards();
+        raf = 0;
+      }
+    };
+    const startGlide = () => { if (!raf) raf = requestAnimationFrame(glide); };
+
+    // ── Drag (pointer events) — repositions live on every move ──
+    let dragging = false, startX = 0, startOff = 0, moved = 0, vel = 0, lastX = 0, lastT = 0;
+    const onDown = (e: PointerEvent) => {
+      dragging = true;
+      startX = e.clientX; startOff = offsetRef.current;
+      moved = 0; vel = 0; lastX = e.clientX; lastT = performance.now();
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
+      try { stage.setPointerCapture(e.pointerId); } catch {}
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      moved = Math.max(moved, Math.abs(dx));
+      const now = performance.now();
+      const dt = now - lastT || 16;
+      vel = (-(e.clientX - lastX) / SPACING) / dt * 16;
+      lastX = e.clientX; lastT = now;
+      offsetRef.current = startOff - dx / SPACING;
+      targetRef.current = offsetRef.current;
+      positionCards(); // synchronous — follows the finger without rAF
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      const momentum = Math.max(-2, Math.min(2, vel * 6));
+      targetRef.current = Math.round(offsetRef.current + momentum);
+      if (moved > 6) { // it was a drag, not a tap — swallow the click
+        suppressClickRef.current = true;
+        setTimeout(() => { suppressClickRef.current = false; }, 60);
+      }
+      startGlide();
+    };
+
+    // Mouse wheel / trackpad → rotate, snapping when it stops.
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const d = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      targetRef.current += d * 0.005;
+      clearTimeout(wheelTimer);
+      wheelTimer = setTimeout(() => {
+        targetRef.current = Math.round(targetRef.current);
+        startGlide();
+      }, 110);
+      startGlide();
+    };
+
+    // Tap a card → rotate the short way to center it.
+    centerCardRef.current = (i: number) => {
+      if (suppressClickRef.current) return;
+      let d = ((i - offsetRef.current) % n + n) % n;
+      if (d > n / 2) d -= n;
+      targetRef.current = offsetRef.current + d;
+      startGlide();
+    };
+
+    stage.addEventListener("pointerdown", onDown);
+    stage.addEventListener("pointermove", onMove);
+    stage.addEventListener("pointerup", onUp);
+    stage.addEventListener("pointercancel", onUp);
+    stage.addEventListener("pointerleave", onUp);
+    stage.addEventListener("wheel", onWheel, { passive: false });
+
+    positionCards(); // initial layout (synchronous, no rAF dependency)
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      clearTimeout(wheelTimer);
+      stage.removeEventListener("pointerdown", onDown);
+      stage.removeEventListener("pointermove", onMove);
+      stage.removeEventListener("pointerup", onUp);
+      stage.removeEventListener("pointercancel", onUp);
+      stage.removeEventListener("pointerleave", onUp);
+      stage.removeEventListener("wheel", onWheel);
+    };
+    // picks is stable for the lifetime of this step; intentionally run once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n]);
+
+  if (n === 0) return null;
+
+  return (
+    <div className="relative -mx-6 mb-2">
+      <div
+        ref={stageRef}
+        className="relative h-[340px] overflow-hidden cursor-grab active:cursor-grabbing select-none"
+        style={{ perspective: "1200px", touchAction: "none" }}
+      >
+        {picks.map((p, i) => (
+          <button
+            key={p.id}
+            ref={(el) => {
+              cardRefs.current[i] = el;
+            }}
+            onClick={() => centerCardRef.current(i)}
+            style={{ width: CARD_W, left: "50%", top: "50%" }}
+            className={`absolute rounded-2xl border-2 p-2 text-left will-change-transform
+              transition-[border-color,box-shadow] duration-200
+              ${focusedId === p.id
+                ? "border-violet-500 bg-violet-500/10 shadow-2xl shadow-violet-500/40"
+                : "border-white/10 bg-white/5"}`}
+          >
+            {p.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={p.imageUrl}
+                alt={p.title}
+                draggable={false}
+                className="w-full aspect-[3/4] object-cover rounded-xl mb-2 pointer-events-none"
+              />
+            ) : (
+              <div className="w-full aspect-[3/4] rounded-xl bg-white/10 mb-2" />
+            )}
+            <div className="text-sm font-semibold truncate px-1">{p.title}</div>
+          </button>
+        ))}
+      </div>
+      <p className="text-center text-xs text-slate-500">
+        Drag, scroll, or tap a poster — the centered one is your favorite
+      </p>
     </div>
   );
 }

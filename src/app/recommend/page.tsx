@@ -422,17 +422,26 @@ export default function RecommendPage() {
 
             {/* Typeahead search — dropdown shows live results as you type */}
             <div ref={searchRef} className="relative mb-4">
+              {/* Search icon — clear visual cue that this is the search field */}
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-violet-300 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </span>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
-                placeholder="Type to search: Naruto, Attack on Titan, Frieren…"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
-                  placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
-                  focus:bg-white/10 transition-all duration-200"
+                placeholder="Search anime to add — try Naruto, Attack on Titan, Frieren…"
+                className="w-full bg-white/[0.07] border-2 border-violet-500/40 rounded-xl pl-12 pr-4 py-4 text-base
+                  placeholder:text-slate-400 shadow-lg shadow-violet-500/10
+                  focus:outline-none focus:border-violet-500/80 focus:bg-white/10
+                  focus:ring-4 focus:ring-violet-500/20 transition-all duration-200"
               />
               {loading && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin block" />
                 </span>
               )}
