@@ -1,0 +1,151 @@
+{
+  "ranAt": "2026-06-24T10:16:14.861Z",
+  "baseUrl": "http://localhost:3000",
+  "agg": {
+    "profiles": 12,
+    "passed": 11,
+    "failed": 1,
+    "avgDistinctFranchises": 9.909090909090908,
+    "totalFranchiseLeaks": 5,
+    "engineMix": {
+      "synopsis": 2,
+      "hybrid": 10
+    }
+  },
+  "rows": [
+    {
+      "name": "modern_shounen",
+      "count": 10,
+      "engineUsed": "synopsis",
+      "modern": 4,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "modern_mixed",
+      "count": 10,
+      "engineUsed": "synopsis",
+      "modern": 2,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": false,
+      "failures": [
+        "only 2 modern (2019+) result(s) for modern taste"
+      ]
+    },
+    {
+      "name": "classic_canon",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 0,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "shounen_classic",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 0,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 1,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "mecha",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 0,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "slice_of_life",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 0,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "isekai_no_romance",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 0,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "dark_psych",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 1,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "sports_hater",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 0,
+      "distinctFranchises": 9,
+      "franchiseLeaks": 1,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "romance",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 1,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "seinen",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 1,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    },
+    {
+      "name": "fate_franchise",
+      "count": 10,
+      "engineUsed": "hybrid",
+      "modern": 1,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 3,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
+    }
+  ]
+}

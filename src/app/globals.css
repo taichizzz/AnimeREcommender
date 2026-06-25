@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a14;
-  --foreground: #ffffff;
+  --background: #0b0b0e;
+  --foreground: #ece7dd;
 }
 
 @theme inline {
@@ -10,6 +10,21 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* ── Ink Noir + Emerald design system ──
+     One accent var to rule them all — swap --color-accent to restyle the brand. */
+  --color-ink: #0b0b0e;        /* page background        */
+  --color-ink-2: #14141a;      /* card / surface         */
+  --color-ink-3: #20202a;      /* raised (poster wells)  */
+  --color-line: #26262e;       /* hairline border        */
+  --color-line-2: #34343f;     /* emphasized border      */
+  --color-paper: #ece7dd;      /* primary text (warm off-white) */
+  --color-paper-2: #8f8a82;    /* muted text             */
+  --color-paper-3: #74706a;    /* dim text / mono labels */
+  --color-accent: #46c06a;     /* emerald — brand + positive */
+  --color-accent-ink: #04240f; /* text on emerald fills  */
+  --color-danger: #e2675b;     /* dislike / negative only */
+  --color-danger-line: #6e2a24;
 }
 
 body {

@@ -108,7 +108,7 @@ export function RecommendQuiz({
   const favorite = picks.find((p) => p.id === favoriteId);
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-6 mb-8">
+    <div className="rounded-lg border border-line bg-ink-2 p-6 mb-8">
       {/* Progress dots */}
       <div className="flex gap-2 justify-center mb-8">
         {Array.from({ length: totalSteps }).map((_, i) => (
@@ -116,10 +116,10 @@ export function RecommendQuiz({
             key={i}
             className={`h-2 rounded-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]
               ${i === visibleStep
-                ? "bg-gradient-to-r from-violet-500 to-purple-500 w-8 shadow-lg shadow-violet-500/40"
+                ? "bg-accent w-8"
                 : i < visibleStep
-                  ? "w-2 bg-violet-500/40"
-                  : "w-2 bg-white/15"}`}
+                  ? "w-2 bg-accent/40"
+                  : "w-2 bg-ink-3"}`}
           />
         ))}
       </div>
@@ -129,9 +129,9 @@ export function RecommendQuiz({
         {/* ── Step 0: pick favorite ───────────────────────────── */}
         {step === 0 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-paper-3 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-6 leading-tight">
-              Which is your <span className="bg-gradient-to-r from-violet-400 to-purple-300 bg-clip-text text-transparent">absolute favorite</span>?
+              Which is your <span className="text-accent">absolute favorite</span>?
             </h2>
             <FavoriteWheel picks={picks} favoriteId={favoriteId} onSelect={setFavoriteId} />
           </>
@@ -140,10 +140,10 @@ export function RecommendQuiz({
         {/* ── Step 1: what hooked you ─────────────────────────── */}
         {step === 1 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-paper-3 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-6 leading-tight">
               What hooked you about{" "}
-              <span className="bg-gradient-to-r from-violet-400 to-purple-300 bg-clip-text text-transparent">
+              <span className="text-accent">
                 {favorite?.title ?? "your pick"}
               </span>?
             </h2>
@@ -154,11 +154,11 @@ export function RecommendQuiz({
                   onClick={() => setHookedChoice(opt.value)}
                   className={`group rounded-xl border-2 p-5 text-left transition-all duration-200
                     ${hookedChoice === opt.value
-                      ? "border-violet-500 bg-violet-500/10"
-                      : "border-white/10 bg-white/5 hover:border-violet-400/40 hover:-translate-y-0.5"}`}
+                      ? "border-accent bg-accent/10"
+                      : "border-line bg-ink-2 hover:border-violet-400/40 hover:-translate-y-0.5"}`}
                 >
                   <div className="font-bold text-base mb-1">{opt.label}</div>
-                  <div className="text-xs text-slate-400">{opt.desc}</div>
+                  <div className="text-xs text-paper-2">{opt.desc}</div>
                 </button>
               ))}
             </div>
@@ -168,9 +168,9 @@ export function RecommendQuiz({
                 onChange={(e) => setHookedText(e.target.value)}
                 placeholder="What was it for you?"
                 maxLength={200}
-                className="mt-3 w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm
-                  placeholder:text-slate-500 focus:outline-none focus:border-violet-500/60
-                  focus:bg-white/10 transition-all duration-200"
+                className="mt-3 w-full bg-ink-2 border border-line rounded-xl px-4 py-3 text-sm
+                  placeholder:text-paper-3 focus:outline-none focus:border-accent/60
+                  focus:bg-ink-3 transition-all duration-200"
               />
             )}
           </>
@@ -179,11 +179,11 @@ export function RecommendQuiz({
         {/* ── Step 2: mood ─────────────────────────────────────── */}
         {step === 2 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-paper-3 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-2 leading-tight">
-              What are you in the <span className="bg-gradient-to-r from-violet-400 to-purple-300 bg-clip-text text-transparent">mood for</span>?
+              What are you in the <span className="text-accent">mood for</span>?
             </h2>
-            <p className="text-sm text-slate-400 mb-6">Pick any that apply — or none.</p>
+            <p className="text-sm text-paper-2 mb-6">Pick any that apply — or none.</p>
             <div className="flex flex-wrap gap-2">
               {MOOD_OPTIONS.map((m) => (
                 <button
@@ -191,8 +191,8 @@ export function RecommendQuiz({
                   onClick={() => toggle(mood, setMood, m.label)}
                   className={`px-4 py-2.5 rounded-full text-sm font-medium border-2 transition-all duration-200
                     ${mood.has(m.label)
-                      ? "border-violet-500 bg-violet-500/20 text-white"
-                      : "border-white/10 bg-white/5 text-slate-300 hover:border-violet-400/40"}`}
+                      ? "border-accent bg-accent/20 text-accent"
+                      : "border-line bg-ink-2 text-paper-2 hover:border-accent/40"}`}
                 >
                   {m.label}
                 </button>
@@ -204,11 +204,11 @@ export function RecommendQuiz({
         {/* ── Step 3: dislikes ─────────────────────────────────── */}
         {step === 3 && (
           <>
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
+            <p className="text-xs uppercase tracking-widest text-paper-3 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-2 leading-tight">
-              Anything you <span className="bg-gradient-to-r from-rose-400 to-red-400 bg-clip-text text-transparent">don&apos;t want</span>?
+              Anything you <span className="text-danger">don&apos;t want</span>?
             </h2>
-            <p className="text-sm text-slate-400 mb-6">Optional — skip if nothing comes to mind.</p>
+            <p className="text-sm text-paper-2 mb-6">Optional — skip if nothing comes to mind.</p>
             <div className="flex flex-wrap gap-2">
               {DISLIKE_OPTIONS.map((d) => (
                 <button
@@ -216,8 +216,8 @@ export function RecommendQuiz({
                   onClick={() => toggle(dislikes, setDislikes, d)}
                   className={`px-4 py-2.5 rounded-full text-sm font-medium border-2 transition-all duration-200
                     ${dislikes.has(d)
-                      ? "border-rose-500/50 bg-rose-500/15 text-rose-200"
-                      : "border-white/10 bg-white/5 text-slate-300 hover:border-rose-400/30"}`}
+                      ? "border-danger-line bg-danger/15 text-danger"
+                      : "border-line bg-ink-2 text-paper-2 hover:border-danger-line"}`}
                 >
                   {d}
                 </button>
@@ -232,8 +232,8 @@ export function RecommendQuiz({
         <button
           onClick={back}
           disabled={loading}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-400 border border-white/10
-            hover:text-white hover:border-white/30 transition-all duration-200 disabled:opacity-30"
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold text-paper-2 border border-line
+            hover:text-paper hover:border-line-2 transition-all duration-200 disabled:opacity-30"
         >
           {step === 0 ? "← Back to picks" : "← Back"}
         </button>
@@ -241,16 +241,14 @@ export function RecommendQuiz({
         <button
           onClick={next}
           disabled={!canContinue || loading}
-          className="px-6 py-3 rounded-xl text-sm font-bold text-white
-            bg-gradient-to-r from-violet-600 to-purple-600
-            hover:from-violet-500 hover:to-purple-500
-            shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40
+          className="px-6 py-3 rounded-md text-sm font-bold text-accent-ink
+            bg-accent hover:brightness-110
             transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed
-            disabled:shadow-none active:scale-[0.98]"
+            active:scale-[0.98]"
         >
           {loading ? (
             <span className="flex items-center gap-2">
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-line-2 border-t-white rounded-full animate-spin" />
               Finding your matches…
             </span>
           ) : step === 3 ? (
@@ -462,11 +460,11 @@ function FavoriteWheel({
             }}
             onClick={() => centerCardRef.current(i)}
             style={{ width: CARD_W, left: "50%", top: "50%" }}
-            className={`absolute rounded-2xl border-2 p-2 text-left will-change-transform
+            className={`absolute rounded-lg border-2 p-2 text-left will-change-transform
               transition-[border-color,box-shadow] duration-200
               ${focusedId === p.id
-                ? "border-violet-500 bg-violet-500/10 shadow-2xl shadow-violet-500/40"
-                : "border-white/10 bg-white/5"}`}
+                ? "border-accent bg-accent/10 shadow-2xl shadow-black/40"
+                : "border-line bg-ink-2"}`}
           >
             {p.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -477,13 +475,13 @@ function FavoriteWheel({
                 className="w-full aspect-[3/4] object-cover rounded-xl mb-2 pointer-events-none"
               />
             ) : (
-              <div className="w-full aspect-[3/4] rounded-xl bg-white/10 mb-2" />
+              <div className="w-full aspect-[3/4] rounded-xl bg-ink-3 mb-2" />
             )}
             <div className="text-sm font-semibold truncate px-1">{p.title}</div>
           </button>
         ))}
       </div>
-      <p className="text-center text-xs text-slate-500">
+      <p className="text-center text-xs text-paper-3">
         Drag, scroll, or tap a poster — the centered one is your favorite
       </p>
     </div>

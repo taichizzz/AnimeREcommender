@@ -6,7 +6,8 @@
     "dev": "NODE_OPTIONS=--dns-result-order=ipv4first next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "eval": "node scripts/eval.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.3",

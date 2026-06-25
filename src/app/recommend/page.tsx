@@ -33,6 +33,19 @@ type SeedItem = {
   score: number;
 };
 
+type FeedbackSignal = "up" | "down" | "not_interested";
+
+// Stable per-browser id for anonymous feedback — the seed of our own ratings data.
+function getClientId(): string {
+  if (typeof window === "undefined") return "anon:server";
+  let id = localStorage.getItem("animer_uid");
+  if (!id) {
+    id = "anon:" + (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2));
+    localStorage.setItem("animer_uid", id);
+  }
+  return id;
+}
+
 export default function RecommendPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [mode, setMode] = useState<"manual" | "mylist">("manual");
@@ -52,6 +65,7 @@ export default function RecommendPage() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [mylistSeedsLoaded, setMylistSeedsLoaded] = useState(false);
   const [expandedRecIds, setExpandedRecIds] = useState<Set<number>>(new Set());
+  const [feedback, setFeedback] = useState<Record<number, FeedbackSignal>>({});
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +94,28 @@ export default function RecommendPage() {
       else next.add(id);
       return next;
     });
+  }
+
+  // Record a reaction to a recommendation. Re-clicking the same signal clears it.
+  // Optimistic: the UI updates immediately; the network call is best-effort.
+  async function sendFeedback(r: RecommendationItem, signal: FeedbackSignal) {
+    const next: FeedbackSignal | "none" = feedback[r.id] === signal ? "none" : signal;
+    setFeedback((prev) => {
+      const copy = { ...prev };
+      if (next === "none") delete copy[r.id];
+      else copy[r.id] = signal;
+      return copy;
+    });
+    if (r.malId == null) return; // can't persist without a MAL id
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ animeMalId: r.malId, signal: next, userKey: getClientId() }),
+      });
+    } catch {
+      // best-effort; the UI already reflects the change
+    }
   }
 
   // Debounced typeahead — auto-search 300ms after the user stops typing
@@ -247,34 +283,26 @@ export default function RecommendPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-white">
-      {/* Ambient glows */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 left-1/3 w-[600px] h-[600px] bg-violet-700/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] bg-purple-700/8 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-800/8 rounded-full blur-3xl" />
-      </div>
-
-      <main className="relative z-10 max-w-4xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-ink text-paper">
+      <main className="max-w-4xl mx-auto px-6 py-12">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-12">
           <Link href="/" aria-label="Back to home">
-            <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-purple-300 to-pink-400 bg-clip-text text-transparent pb-1">
-              Animer
+            <h1 className="text-2xl font-bold tracking-[0.22em] text-paper">
+              ANIMER<span className="text-accent">.</span>
             </h1>
           </Link>
           {isLoggedIn ? (
             <Link href="/dashboard"
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/15
-                border border-white/10 hover:border-white/20 transition-all duration-200">
-              My Dashboard
+              className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
+              My dashboard
             </Link>
           ) : (
             <a href="/api/auth/login"
-              className="px-4 py-2 rounded-xl text-sm font-semibold
-                bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500
-                shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-all duration-200">
+              className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
               Login with MAL
             </a>
           )}
@@ -282,29 +310,27 @@ export default function RecommendPage() {
 
         {/* Mode toggle — only shown when logged in */}
         {isLoggedIn && (
-          <div className="relative flex p-1 bg-white/5 rounded-2xl border border-white/10 mb-8 backdrop-blur-md overflow-hidden">
+          <div className="relative flex p-1 bg-ink-2 rounded-md border border-line mb-8 overflow-hidden">
             <div
-              className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl
-                bg-gradient-to-r from-violet-600 to-purple-600
-                shadow-lg shadow-violet-500/30
-                transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+              className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded
+                bg-accent transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{
                 transform: mode === "manual" ? "translateX(0)" : "translateX(100%)",
               }}
             />
             <button
               onClick={() => setMode("manual")}
-              className={`relative z-10 flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300
-                ${mode === "manual" ? "text-white" : "text-slate-400 hover:text-white"}`}
+              className={`relative z-10 flex-1 py-2.5 rounded text-sm font-semibold transition-colors duration-300
+                ${mode === "manual" ? "text-accent-ink" : "text-paper-2 hover:text-paper"}`}
             >
-              Pick Your Own
+              Pick your own
             </button>
             <button
               onClick={() => setMode("mylist")}
-              className={`relative z-10 flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300
-                ${mode === "mylist" ? "text-white" : "text-slate-400 hover:text-white"}`}
+              className={`relative z-10 flex-1 py-2.5 rounded text-sm font-semibold transition-colors duration-300
+                ${mode === "mylist" ? "text-accent-ink" : "text-paper-2 hover:text-paper"}`}
             >
-              From My MAL List
+              From my MAL list
             </button>
           </div>
         )}
@@ -312,24 +338,24 @@ export default function RecommendPage() {
 
         {/* ── MAL LIST MODE ───────────────────────────────────────────── */}
         {mode === "mylist" && !quizOpen && (
-          <div key="mylist" className="liquid-appear mb-8 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-6">
-            <h2 className="font-bold text-white text-lg mb-1">Recommendations from your list</h2>
-            <p className="text-slate-400 text-sm mb-6">
+          <div key="mylist" className="liquid-appear mb-8 rounded-lg border border-accent/20 bg-accent/5 p-6">
+            <h2 className="font-bold text-paper text-lg mb-1">Recommendations from your list</h2>
+            <p className="text-paper-2 text-sm mb-6">
               We&apos;ll use your 5 highest-rated completed anime as seeds, then ask a few quick questions to dial it in.
             </p>
 
             {seeds.length > 0 && (
               <div className="mb-6">
-                <p className="text-xs uppercase tracking-widest text-slate-500 mb-3">Based on</p>
+                <p className="text-xs uppercase tracking-widest text-paper-3 mb-3">Based on</p>
                 <div className="flex gap-3 flex-wrap">
                   {seeds.map((s) => (
-                    <div key={s.id} className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 border border-white/10">
+                    <div key={s.id} className="flex items-center gap-2 bg-ink-3 rounded-xl px-3 py-2 border border-line">
                       {s.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={s.imageUrl} alt={s.title} className="w-7 object-cover rounded-md flex-shrink-0" style={{ height: "36px" }} />
                       )}
                       <span className="text-sm font-medium max-w-[140px] truncate">{s.title}</span>
-                      <span className="text-xs text-violet-300 font-bold ml-1">★ {s.score}</span>
+                      <span className="text-xs text-accent font-bold ml-1">★ {s.score}</span>
                     </div>
                   ))}
                 </div>
@@ -340,8 +366,7 @@ export default function RecommendPage() {
               onClick={startListQuiz}
               disabled={recLoading}
               className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
-                bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500
-                shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40
+                bg-accent text-accent-ink hover:brightness-110
                 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
             >
               {recLoading ? (
@@ -375,33 +400,33 @@ export default function RecommendPage() {
         {/* ── MANUAL MODE ─────────────────────────────────────────────── */}
         {mode === "manual" && !quizOpen && recs.length === 0 && (
           <div key="manual" className="liquid-appear">
-            <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+            <div className="mb-8 rounded-lg border border-line bg-ink-2  p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Your picks</h2>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-mono">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-paper-2">Your picks</h2>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent font-mono">
                     {selected.length}/10
                   </span>
                 </div>
                 <button onClick={() => setSelected([])} disabled={selected.length === 0}
-                  className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
+                  className="text-xs text-paper-3 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                   Clear all
                 </button>
               </div>
 
               {selected.length === 0 ? (
-                <p className="text-slate-500 text-sm mb-4">Search and select up to 10 anime you enjoy.</p>
+                <p className="text-paper-3 text-sm mb-4">Search and select up to 10 anime you enjoy.</p>
               ) : (
                 <div className="flex flex-wrap gap-3 mb-4">
                   {selected.map((a) => (
-                    <div key={a.id} className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 border border-white/10">
+                    <div key={a.id} className="flex items-center gap-2 bg-ink-3 rounded-xl px-3 py-2 border border-line">
                       {a.imageUrl && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={a.imageUrl} alt={a.title} className="w-7 object-cover rounded-md flex-shrink-0" style={{ height: "36px" }} />
                       )}
                       <span className="text-sm font-medium max-w-[160px] truncate">{a.title}</span>
                       <button onClick={() => removeFromSelected(a.id)}
-                        className="text-slate-400 hover:text-red-400 transition-colors ml-1 text-xl leading-none">
+                        className="text-paper-2 hover:text-red-400 transition-colors ml-1 text-xl leading-none">
                         ×
                       </button>
                     </div>
@@ -411,9 +436,8 @@ export default function RecommendPage() {
 
               <button onClick={startManualQuiz} disabled={selected.length === 0 || recLoading}
                 className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
-                  bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500
-                  shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40
-                  disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98]">
+                  bg-accent text-accent-ink hover:brightness-110
+                                    disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98]">
                 {selected.length === 0
                   ? "Pick at least one anime to continue"
                   : "Continue → 4 quick questions"}
@@ -423,7 +447,7 @@ export default function RecommendPage() {
             {/* Typeahead search — dropdown shows live results as you type */}
             <div ref={searchRef} className="relative mb-4">
               {/* Search icon — clear visual cue that this is the search field */}
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-violet-300 pointer-events-none">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-accent pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                   fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" />
@@ -435,10 +459,9 @@ export default function RecommendPage() {
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
                 placeholder="Search anime to add — try Naruto, Attack on Titan, Frieren…"
-                className="w-full bg-white/[0.07] border-2 border-violet-500/40 rounded-xl pl-12 pr-4 py-4 text-base
-                  placeholder:text-slate-400 shadow-lg shadow-violet-500/10
-                  focus:outline-none focus:border-violet-500/80 focus:bg-white/10
-                  focus:ring-4 focus:ring-violet-500/20 transition-all duration-200"
+                className="w-full bg-ink-2 border-2 border-accent/40 rounded-xl pl-12 pr-4 py-4 text-base
+                  placeholder:text-paper-2                   focus:outline-none focus:border-accent/80 focus:bg-ink-3
+                  focus:ring-4 focus:ring-accent/20 transition-all duration-200"
               />
               {loading && (
                 <span className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -450,9 +473,8 @@ export default function RecommendPage() {
               {showDropdown && query.trim().length > 0 && results.length > 0 && (
                 <div
                   className="absolute left-0 right-0 top-full mt-2 z-50 max-h-[420px] overflow-y-auto
-                    rounded-xl border border-white/10 bg-[#13131f]/95 backdrop-blur-md
-                    shadow-2xl shadow-black/50 liquid-appear
-                    [scrollbar-width:thin] [scrollbar-color:rgba(124,58,237,0.4)_transparent]"
+                    rounded-xl border border-line bg-ink-2                     shadow-2xl shadow-black/50 liquid-appear
+                    [scrollbar-width:thin] [scrollbar-color:rgba(70,192,106,0.4)_transparent]"
                 >
                   {results.slice(0, 10).map((a, i) => {
                     const isSelected = selectedIds.has(a.id);
@@ -466,13 +488,13 @@ export default function RecommendPage() {
                           if (isSelected) removeFromSelected(a.id);
                           else addToSelected(a);
                         }}
-                        className={`w-full text-left flex gap-3 items-center px-3 py-2.5 border-b border-white/5 last:border-b-0
+                        className={`w-full text-left flex gap-3 items-center px-3 py-2.5 border-b border-line last:border-b-0
                           transition-all duration-150
                           ${atCap
                             ? "opacity-40 cursor-not-allowed"
                             : isSelected
-                              ? "bg-violet-500/10 hover:bg-red-500/10"
-                              : "hover:bg-violet-500/10"}`}
+                              ? "bg-accent/10 hover:bg-red-500/10"
+                              : "hover:bg-accent/10"}`}
                       >
                         <div className="flex-shrink-0">
                           {a.imageUrl ? (
@@ -481,21 +503,21 @@ export default function RecommendPage() {
                               className="w-10 rounded object-cover"
                               style={{ height: "56px" }} />
                           ) : (
-                            <div className="w-10 rounded bg-white/10" style={{ height: "56px" }} />
+                            <div className="w-10 rounded bg-ink-3" style={{ height: "56px" }} />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-white truncate">{a.title}</div>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-sm font-medium text-paper truncate">{a.title}</div>
+                          <div className="text-xs text-paper-3">
                             {a.year ?? "?"} · ⭐ {a.score ?? "?"}
                           </div>
                         </div>
                         <span className={`flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-md
                           ${isSelected
-                            ? "bg-violet-500/20 text-violet-300 border border-violet-500/40"
+                            ? "bg-accent/20 text-accent border border-accent/40"
                             : atCap
-                              ? "text-slate-500"
-                              : "bg-white/10 text-slate-300 border border-white/10"}`}>
+                              ? "text-paper-3"
+                              : "bg-ink-3 text-paper-2 border border-line"}`}>
                           {isSelected ? "✓ Added" : atCap ? "Max" : "+ Add"}
                         </span>
                       </button>
@@ -520,13 +542,13 @@ export default function RecommendPage() {
             {/* Toolbar — shown only in manual mode where picks editing makes sense.
                 MAL List mode already has a "Try a different mood →" button in its own panel. */}
             {mode === "manual" && (
-              <div className="liquid-appear mb-8 flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-5 py-4">
-                <span className="text-xs uppercase tracking-widest text-slate-500">Based on</span>
+              <div className="liquid-appear mb-8 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-ink-2  px-5 py-4">
+                <span className="text-xs uppercase tracking-widest text-paper-3">Based on</span>
                 <div className="flex gap-2 flex-wrap flex-1 min-w-0">
                   {selected.map((a) => (
                     <span
                       key={a.id}
-                      className="text-xs font-medium text-violet-200 bg-violet-500/15 border border-violet-500/30 rounded-full px-2.5 py-1 truncate max-w-[180px]"
+                      className="text-xs font-medium text-accent bg-accent/15 border border-accent/30 rounded-full px-2.5 py-1 truncate max-w-[180px]"
                     >
                       {a.title}
                     </span>
@@ -539,8 +561,8 @@ export default function RecommendPage() {
                     setThinking("");
                     setQuizOpen(true);
                   }}
-                  className="text-xs font-semibold text-violet-300 hover:text-white border border-violet-500/40
-                    hover:border-violet-400 rounded-full px-3 py-1.5 transition-all duration-200"
+                  className="text-xs font-semibold text-accent hover:text-paper border border-accent/40
+                    hover:border-accent rounded-full px-3 py-1.5 transition-all duration-200"
                 >
                   Try a different mood →
                 </button>
@@ -550,7 +572,7 @@ export default function RecommendPage() {
                     setRecs([]);
                     setThinking("");
                   }}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                  className="text-xs text-paper-2 hover:text-paper transition-colors"
                 >
                   Edit picks
                 </button>
@@ -558,19 +580,19 @@ export default function RecommendPage() {
             )}
 
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Recommendations</h2>
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+              <div className="h-px flex-1 bg-line" />
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-paper-2">Recommendations</h2>
+              <div className="h-px flex-1 bg-line" />
             </div>
 
             {thinking && (
-              <details className="mb-6 rounded-2xl border border-violet-500/20 bg-violet-500/5 backdrop-blur-sm overflow-hidden card-appear">
-                <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-3 hover:bg-violet-500/10 transition-colors duration-200">
-                  <span className="text-sm font-semibold text-violet-200">How Animer thought about your taste</span>
-                  <span className="ml-auto text-xs text-violet-400/60">click to expand</span>
+              <details className="mb-6 rounded-lg border border-accent/20 bg-accent/5  overflow-hidden card-appear">
+                <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-3 hover:bg-accent/10 transition-colors duration-200">
+                  <span className="text-sm font-semibold text-accent">How Animer thought about your taste</span>
+                  <span className="ml-auto text-xs text-paper-3">click to expand</span>
                 </summary>
                 <div className="px-5 pb-5 pt-0">
-                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">{thinking}</p>
+                  <p className="text-sm text-paper-2 leading-relaxed whitespace-pre-line">{thinking}</p>
                 </div>
               </details>
             )}
@@ -581,25 +603,25 @@ export default function RecommendPage() {
 
                 return (
                   <div key={r.id}
-                    className={`card-appear rounded-2xl border bg-white/5 p-4
+                    className={`card-appear rounded-lg border bg-ink-2 p-4
                       transition-all duration-300 cursor-pointer
                       ${expanded
-                        ? "border-violet-500/40 bg-violet-500/[0.04] shadow-lg shadow-violet-500/10"
-                        : "border-white/10 hover:border-white/20 hover:bg-white/8 hover:shadow-lg hover:shadow-black/30 hover:-translate-y-0.5"}`}
+                        ? "border-accent/40 bg-accent/[0.04] shadow-lg shadow-accent/10"
+                        : "border-line hover:border-line-2 hover:bg-ink-2 hover:shadow-lg hover:shadow-black/30 hover:-translate-y-0.5"}`}
                     style={{ animationDelay: `${i * 80}ms` }}
                     onClick={() => toggleExpand(r.id)}
                   >
                     {/* Compact row — always visible */}
                     <div className="flex gap-4">
                       <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
-                        <span className="text-xs font-mono text-slate-600">#{i + 1}</span>
+                        <span className="text-xs font-mono text-paper-3">#{i + 1}</span>
                         {r.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={r.imageUrl} alt={r.title}
                             className={`object-cover rounded-lg transition-all duration-300 ${expanded ? "w-44 shadow-xl shadow-black/40" : "w-16"}`}
                             style={{ height: expanded ? "240px" : "88px" }} />
                         ) : (
-                          <div className={`rounded-lg bg-white/10 transition-all duration-300 ${expanded ? "w-44" : "w-16"}`}
+                          <div className={`rounded-lg bg-ink-3 transition-all duration-300 ${expanded ? "w-44" : "w-16"}`}
                             style={{ height: expanded ? "240px" : "88px" }} />
                         )}
                       </div>
@@ -611,47 +633,84 @@ export default function RecommendPage() {
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="font-semibold text-white hover:text-violet-300 hover:underline underline-offset-2 transition-colors"
+                              className="font-semibold text-paper hover:text-accent hover:underline underline-offset-2 transition-colors"
                             >
                               {r.title}
                             </a>
                           ) : (
-                            <h3 className="font-semibold text-white">{r.title}</h3>
+                            <h3 className="font-semibold text-paper">{r.title}</h3>
                           )}
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-paper-3">
                             {r.year ?? "?"} · ⭐ {r.score != null ? `${r.score}%` : "?"}
                           </span>
                           {r.genres.slice(0, 3).map((g) => (
-                            <span key={g} className="text-[10px] uppercase tracking-wide text-slate-500 bg-white/5 border border-white/10 rounded px-1.5 py-0.5">
+                            <span key={g} className="text-[10px] uppercase tracking-wide text-paper-3 bg-ink-2 border border-line rounded px-1.5 py-0.5">
                               {g}
                             </span>
                           ))}
                         </div>
-                        <p className={`text-sm text-slate-400 leading-relaxed ${expanded ? "" : "line-clamp-2"}`}>
+                        <p className={`text-sm text-paper-2 leading-relaxed ${expanded ? "" : "line-clamp-2"}`}>
                           {r.reason}
                         </p>
 
                         {/* Expand affordance arrow */}
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-paper-3">
                             {expanded ? "Hide details" : "Show details"}
                           </span>
                           <span
-                            className={`text-violet-400/70 text-xs transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+                            className={`text-paper-3 text-xs transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
                           >
                             ▾
                           </span>
+                        </div>
+
+                        {/* Feedback — teaches the recommender (and seeds our own ratings data) */}
+                        <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => sendFeedback(r, "up")}
+                            aria-pressed={feedback[r.id] === "up"}
+                            title="More like this"
+                            className={`flex items-center gap-1 text-xs rounded-full border px-2.5 py-1 transition-all duration-150
+                              ${feedback[r.id] === "up"
+                                ? "border-accent/60 bg-accent/15 text-accent"
+                                : "border-line text-paper-2 hover:border-accent/40 hover:text-accent"}`}
+                          >
+                            ↑ Like
+                          </button>
+                          <button
+                            onClick={() => sendFeedback(r, "down")}
+                            aria-pressed={feedback[r.id] === "down"}
+                            title="Not my taste"
+                            className={`flex items-center gap-1 text-xs rounded-full border px-2.5 py-1 transition-all duration-150
+                              ${feedback[r.id] === "down"
+                                ? "border-danger-line bg-danger/15 text-danger"
+                                : "border-line text-paper-2 hover:border-danger-line hover:text-danger"}`}
+                          >
+                            ↓ Dislike
+                          </button>
+                          <button
+                            onClick={() => sendFeedback(r, "not_interested")}
+                            aria-pressed={feedback[r.id] === "not_interested"}
+                            title="Don't show me this kind"
+                            className={`text-xs rounded-full border px-2.5 py-1 transition-all duration-150
+                              ${feedback[r.id] === "not_interested"
+                                ? "border-white/30 bg-ink-3 text-paper"
+                                : "border-line text-paper-3 hover:border-white/25 hover:text-paper-2"}`}
+                          >
+                            Not interested
+                          </button>
                         </div>
                       </div>
                     </div>
 
                     {/* Expanded section */}
                     {expanded && (
-                      <div className="liquid-appear mt-5 pt-5 border-t border-white/10 space-y-5">
+                      <div className="liquid-appear mt-5 pt-5 border-t border-line space-y-5">
                         {r.synopsis && (
                           <div>
-                            <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Synopsis</p>
-                            <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+                            <p className="text-[10px] uppercase tracking-widest text-paper-3 mb-2">Synopsis</p>
+                            <p className="text-sm text-paper-2 leading-relaxed whitespace-pre-line">
                               {r.synopsis}
                             </p>
                           </div>
@@ -663,11 +722,9 @@ export default function RecommendPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-2 text-sm font-bold text-white
-                              bg-gradient-to-r from-violet-600 to-purple-600
-                              hover:from-violet-500 hover:to-purple-500
-                              shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40
-                              rounded-xl px-5 py-3 transition-all duration-200 active:scale-[0.98]"
+                            className="inline-flex items-center gap-2 text-sm font-bold text-accent-ink
+                              bg-accent hover:brightness-110
+                              rounded-md px-5 py-3 transition-all duration-200 active:scale-[0.98]"
                           >
                             View on MyAnimeList ↗
                           </a>

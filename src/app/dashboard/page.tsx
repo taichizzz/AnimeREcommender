@@ -43,18 +43,18 @@ type AnimeEntry = {
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  Completed:      "#8b5cf6",
-  "Plan to Watch": "#06b6d4",
-  Watching:       "#f472b6",
-  Dropped:        "#f87171",
-  "On Hold":      "#f59e0b",
+  Completed:      "#46c06a",
+  "Plan to Watch": "#4a90b0",
+  Watching:       "#c9a24b",
+  Dropped:        "#c0604a",
+  "On Hold":      "#8a8278",
 };
 
 function scoreColor(score: number): string {
-  if (score >= 9) return "#10b981";
-  if (score >= 7) return "#8b5cf6";
-  if (score >= 5) return "#6366f1";
-  return "#475569";
+  if (score >= 9) return "#46c06a";
+  if (score >= 7) return "#7cc98a";
+  if (score >= 5) return "#c9a24b";
+  return "#6b6e76";
 }
 
 // ─── Donut active shape (pop-out + glow on hover) ────────────────────────────
@@ -90,9 +90,9 @@ function ActiveDonutSlice(props: any) {
 function DonutTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#13131f] border border-white/10 rounded-xl px-3 py-2 text-sm shadow-xl">
-      <p className="font-semibold text-white">{payload[0].name}</p>
-      <p className="text-slate-400">{payload[0].value} anime</p>
+    <div className="bg-ink-2 border border-line rounded-xl px-3 py-2 text-sm shadow-xl">
+      <p className="font-semibold text-paper">{payload[0].name}</p>
+      <p className="text-paper-2">{payload[0].value} anime</p>
     </div>
   );
 }
@@ -101,9 +101,9 @@ function DonutTooltip({ active, payload }: any) {
 function BarTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#13131f] border border-white/10 rounded-xl px-3 py-2 text-sm shadow-xl">
-      <p className="font-semibold text-white">Score {label}</p>
-      <p className="text-slate-400">{payload[0].value} anime</p>
+    <div className="bg-ink-2 border border-line rounded-xl px-3 py-2 text-sm shadow-xl">
+      <p className="font-semibold text-paper">Score {label}</p>
+      <p className="text-paper-2">{payload[0].value} anime</p>
     </div>
   );
 }
@@ -112,19 +112,19 @@ function BarTooltip({ active, payload, label }: any) {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-      <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-white">{value}</p>
+    <div className="rounded-lg border border-line bg-ink-2 px-5 py-4">
+      <p className="text-xs uppercase tracking-widest text-paper-3 mb-1">{label}</p>
+      <p className="text-2xl font-bold text-paper">{value}</p>
     </div>
   );
 }
 
 function ScoreBadge({ score }: { score: number }) {
   const cls =
-    score >= 9 ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-    : score >= 7 ? "bg-violet-500/20 text-violet-300 border-violet-500/30"
-    : score >= 5 ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
-    : "bg-slate-500/20 text-slate-400 border-slate-500/30";
+    score >= 9 ? "bg-accent/20 text-accent border-accent/30"
+    : score >= 7 ? "bg-accent/10 text-accent border-accent/20"
+    : score >= 5 ? "bg-ink-3 text-paper-2 border-line-2"
+    : "bg-ink-3 text-paper-3 border-line";
   return (
     <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${cls}`}>
       {score > 0 ? score : "—"}
@@ -227,28 +227,22 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a14] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-violet-500/20 border-t-violet-500 rounded-full animate-spin" />
+      <div className="min-h-screen bg-ink flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-white">
-      {/* Ambient glows */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 left-1/3 w-[600px] h-[600px] bg-violet-700/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-cyan-700/8 rounded-full blur-3xl" />
-      </div>
-
-      <main className="relative z-10 max-w-5xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-ink text-paper">
+      <main className="max-w-5xl mx-auto px-6 py-12">
 
         {/* Nav */}
         <div className="flex items-center justify-between mb-10">
-          <Link href="/" className="text-xl font-black bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
-            Animer
+          <Link href="/" className="text-xl font-bold tracking-[0.18em] text-paper">
+            ANIMER<span className="text-accent">.</span>
           </Link>
-          <a href="/api/auth/logout" className="text-sm text-slate-400 hover:text-red-400 transition-colors">
+          <a href="/api/auth/logout" className="text-sm text-paper-2 hover:text-red-400 transition-colors">
             Log out
           </a>
         </div>
@@ -258,15 +252,15 @@ export default function DashboardPage() {
           {user?.picture ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={user.picture} alt={user.name}
-              className="w-20 h-20 rounded-full border-2 border-violet-500/40 object-cover" />
+              className="w-20 h-20 rounded-full border-2 border-accent/40 object-cover" />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 border-2 border-violet-500/40 flex items-center justify-center text-2xl font-black text-white">
+            <div className="w-20 h-20 rounded-full bg-accent border-2 border-accent flex items-center justify-center text-2xl font-black text-accent-ink">
               {user?.name?.[0]?.toUpperCase()}
             </div>
           )}
           <div>
             <h1 className="text-3xl font-black">{user?.name}</h1>
-            <p className="text-slate-400 text-sm mt-0.5">MyAnimeList account</p>
+            <p className="text-paper-2 text-sm mt-0.5">MyAnimeList account</p>
           </div>
         </div>
 
@@ -284,22 +278,22 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
           {/* Donut — list status */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-4">List Status</p>
+          <div className="rounded-lg border border-line bg-ink-2 p-6">
+            <p className="text-xs uppercase tracking-widest text-paper-3 mb-4">List Status</p>
             <div className="flex items-center gap-6">
               <div style={{ width: 180, height: 180, overflow: "visible" }} className="flex-shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                     <Pie data={statusData} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={2} startAngle={90} endAngle={-270} activeShape={ActiveDonutSlice}>
                       {statusData.map((entry) => (
-                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "#8b5cf6"} stroke="transparent" />
+                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "#46c06a"} stroke="transparent" />
                       ))}
                       <Label content={({ viewBox }) => {
                         const vb = viewBox as { cx: number; cy: number };
                         return (
                           <text x={vb.cx} y={vb.cy} textAnchor="middle" dominantBaseline="central">
-                            <tspan x={vb.cx} dy="-0.4em" fontSize="20" fontWeight="800" fill="white">{statusTotal}</tspan>
-                            <tspan x={vb.cx} dy="1.4em" fontSize="10" fill="#475569">total</tspan>
+                            <tspan x={vb.cx} dy="-0.4em" fontSize="20" fontWeight="800" fill="#ece7dd">{statusTotal}</tspan>
+                            <tspan x={vb.cx} dy="1.4em" fontSize="10" fill="#74706a">total</tspan>
                           </text>
                         );
                       }} position="center" />
@@ -312,8 +306,8 @@ export default function DashboardPage() {
                 {statusData.map((d) => (
                   <div key={d.name} className="flex items-center gap-2 text-sm">
                     <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[d.name] }} />
-                    <span className="text-slate-400 flex-1">{d.name}</span>
-                    <span className="font-bold text-white">{d.value}</span>
+                    <span className="text-paper-2 flex-1">{d.name}</span>
+                    <span className="font-bold text-paper">{d.value}</span>
                   </div>
                 ))}
               </div>
@@ -321,13 +315,13 @@ export default function DashboardPage() {
           </div>
 
           {/* Bar chart — score distribution */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-4">Score Distribution</p>
+          <div className="rounded-lg border border-line bg-ink-2 p-6">
+            <p className="text-xs uppercase tracking-widest text-paper-3 mb-4">Score Distribution</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={scoreData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="score" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} width={24} />
+                <YAxis type="category" dataKey="score" tick={{ fill: "#74706a", fontSize: 12 }} axisLine={false} tickLine={false} width={24} />
                 <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={18}>
                   {scoreData.map((entry) => (
@@ -341,17 +335,17 @@ export default function DashboardPage() {
 
         {/* Genre bars */}
         {genreData.length > 0 && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 mb-6">
-            <p className="text-xs uppercase tracking-widest text-slate-500 mb-5">Top Genres</p>
+          <div className="rounded-lg border border-line bg-ink-2 p-6 mb-6">
+            <p className="text-xs uppercase tracking-widest text-paper-3 mb-5">Top Genres</p>
             <ResponsiveContainer width="100%" height={genreData.length * 36}>
               <BarChart data={genreData} layout="vertical" margin={{ left: 0, right: 40, top: 0, bottom: 0 }}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" tick={{ fill: "#94a3b8", fontSize: 13 }} axisLine={false} tickLine={false} width={90} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "#8f8a82", fontSize: 13 }} axisLine={false} tickLine={false} width={90} />
                 <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar dataKey="count" radius={[0, 8, 8, 0]} maxBarSize={14}
-                  label={{ position: "right", fill: "#475569", fontSize: 12 }}>
+                  label={{ position: "right", fill: "#74706a", fontSize: 12 }}>
                   {genreData.map((_, i) => (
-                    <Cell key={i} fill={i < 3 ? "#8b5cf6" : i < 6 ? "#6366f1" : "#475569"} fillOpacity={0.8} />
+                    <Cell key={i} fill={i < 3 ? "#46c06a" : i < 6 ? "#2e7d4f" : "#74706a"} fillOpacity={0.8} />
                   ))}
                 </Bar>
               </BarChart>
@@ -360,46 +354,45 @@ export default function DashboardPage() {
         )}
 
         {/* Recommend banner */}
-        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5 mb-10 flex items-center justify-between gap-4">
+        <div className="rounded-lg border border-accent/20 bg-accent/5 p-5 mb-10 flex items-center justify-between gap-4">
           <div>
-            <h2 className="font-semibold text-white">Get recommendations from your list</h2>
-            <p className="text-sm text-slate-400 mt-0.5">Uses your top-rated completed anime as seeds.</p>
+            <h2 className="font-semibold text-paper">Get recommendations from your list</h2>
+            <p className="text-sm text-paper-2 mt-0.5">Uses your top-rated completed anime as seeds.</p>
           </div>
           <button onClick={handleRecommendFromList}
             className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm
-              bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500
-              shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40
-              transition-all duration-200 active:scale-[0.97]">
+              bg-accent text-accent-ink hover:brightness-110
+                            transition-all duration-200 active:scale-[0.97]">
             Recommend →
           </button>
         </div>
 
         {/* Divider */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+          <div className="h-px flex-1 bg-line" />
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-paper-2">
             Completed ({anime.length})
           </h2>
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="h-px flex-1 bg-line" />
         </div>
 
         {/* Anime grid */}
         <div key={page} className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 mb-8 ${transitioning ? "grid-exit" : ""}`}>
           {pagedAnime.map((entry, i) => (
             <div key={entry.node.id}
-              className="card-appear group rounded-2xl border border-white/10 bg-white/5
+              className="card-appear group rounded-lg border border-line bg-ink-2
                 overflow-hidden transition-all duration-200
-                hover:-translate-y-1 hover:border-white/20 hover:shadow-lg hover:shadow-black/40"
+                hover:-translate-y-1 hover:border-line-2 hover:shadow-lg hover:shadow-black/40"
               style={{ animationDelay: `${i * 25}ms` }}>
               {entry.node.main_picture ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={entry.node.main_picture.medium} alt={entry.node.title}
                   className="w-full object-cover" style={{ height: "160px" }} />
               ) : (
-                <div className="w-full bg-white/10" style={{ height: "160px" }} />
+                <div className="w-full bg-ink-3" style={{ height: "160px" }} />
               )}
               <div className="p-3">
-                <p className="text-xs font-semibold text-white line-clamp-2 leading-snug mb-2">
+                <p className="text-xs font-semibold text-paper line-clamp-2 leading-snug mb-2">
                   {entry.node.title}
                 </p>
                 <ScoreBadge score={entry.list_status.score} />
@@ -414,8 +407,8 @@ export default function DashboardPage() {
             <button
               onClick={() => goToPage(page - 1)}
               disabled={page === 0 || transitioning}
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10
-                hover:bg-white/10 hover:border-white/20 transition-all duration-200
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-ink-2 border border-line
+                hover:bg-ink-3 hover:border-line-2 transition-all duration-200
                 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ← Prev
@@ -428,8 +421,8 @@ export default function DashboardPage() {
                   onClick={() => goToPage(i)}
                   className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200
                     ${i === page
-                      ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30"
-                      : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white border border-white/10"
+                      ? "bg-accent text-accent-ink"
+                      : "bg-ink-2 text-paper-2 hover:bg-ink-3 hover:text-paper border border-line"
                     }`}
                 >
                   {i + 1}
@@ -440,8 +433,8 @@ export default function DashboardPage() {
             <button
               onClick={() => goToPage(page + 1)}
               disabled={page === totalPages - 1 || transitioning}
-              className="px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 border border-white/10
-                hover:bg-white/10 hover:border-white/20 transition-all duration-200
+              className="px-4 py-2 rounded-xl text-sm font-semibold bg-ink-2 border border-line
+                hover:bg-ink-3 hover:border-line-2 transition-all duration-200
                 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Next →

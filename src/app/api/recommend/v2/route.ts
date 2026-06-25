@@ -26,6 +26,34 @@ function isStringArray(x: unknown): x is string[] {
 const FINAL_COUNT = 10;
 const CANDIDATE_POOL = 50;   // wider pool — we filter by dislikes before sending to Groq
 const TO_RERANK = 30;
+const RRF_K = 60;            // Reciprocal Rank Fusion constant (standard default)
+
+// Merge two ranked candidate lists whose scores live on DIFFERENT scales
+// (CF cosine vs synopsis cosine — not directly comparable) into one ranking.
+// Reciprocal Rank Fusion scores each candidate by the sum of 1/(K + rank) over
+// the lists it appears in, so anime ranked highly by BOTH engines rise to the
+// top while anime found by only one engine still surface. This is the standard
+// way production systems blend heterogeneous retrievers.
+function fuseRRF(cf: AnimeMatch[], syn: AnimeMatch[]): AnimeMatch[] {
+  const score = new Map<number, number>();
+  const best = new Map<number, AnimeMatch>();
+
+  const ingest = (list: AnimeMatch[]) => {
+    list.forEach((m, i) => {
+      score.set(m.id, (score.get(m.id) ?? 0) + 1 / (RRF_K + i + 1));
+      // Keep the representation with the higher raw similarity — used for the
+      // fallback reason text + display.
+      const prev = best.get(m.id);
+      if (!prev || m.similarity > prev.similarity) best.set(m.id, m);
+    });
+  };
+  ingest(cf);
+  ingest(syn);
+
+  return Array.from(best.values()).sort(
+    (a, b) => (score.get(b.id) ?? 0) - (score.get(a.id) ?? 0)
+  );
+}
 
 // Map dislike chips → AniList genre exclusions (case-insensitive)
 const DISLIKE_GENRE_MAP: Record<string, string[]> = {
@@ -91,33 +119,43 @@ export async function POST(request: Request) {
   const excludeMalIds = isNumberArray(exclude) ? exclude : [];
 
   try {
-    // 1) Get a wide pool of candidates from pgvector.
-    //    Try CF first (better quality). If none of the user's seeds are in the
-    //    CF index (uncommon for popular picks), fall back to synopsis.
-    let engineUsed: "cf" | "synopsis" = "cf";
-    let allMatches;
-    try {
-      allMatches = await matchAnimeForUser({
-        likedMalIds: liked,
-        likedScores,
-        excludeMalIds,
-        matchCount: CANDIDATE_POOL,
-        useCF: true,
-      });
-    } catch (cfErr) {
-      // Any CF-side failure (seeds missing from CF index, no usable embeddings,
-      // empty user vector, etc.) → fall back to synopsis embeddings, which
-      // cover ~14k anime vs ~7.7k for CF.
-      console.log("[v2] CF retrieval failed, falling back to synopsis:", String(cfErr));
-      engineUsed = "synopsis";
-      allMatches = await matchAnimeForUser({
-        likedMalIds: liked,
-        likedScores,
-        excludeMalIds,
-        matchCount: CANDIDATE_POOL,
-        useCF: false,
-      });
+    // 1) Retrieve from BOTH engines in parallel and fuse them (no silent
+    //    fallback). Synopsis covers all ~14k anime; CF adds collaborative
+    //    signal for the ~7.7k anime in the ratings index. When the user's seeds
+    //    aren't in the CF index, CF simply returns nothing and synopsis carries
+    //    the result — but when CF is available, both votes are blended via RRF.
+    const params = (useCF: boolean) => ({
+      likedMalIds: liked,
+      likedScores,
+      excludeMalIds,
+      matchCount: CANDIDATE_POOL,
+      useCF,
+    });
+
+    const [cfResult, synResult] = await Promise.allSettled([
+      matchAnimeForUser(params(true)),
+      matchAnimeForUser(params(false)),
+    ]);
+
+    const cfMatches = cfResult.status === "fulfilled" ? cfResult.value : [];
+    const synMatches = synResult.status === "fulfilled" ? synResult.value : [];
+
+    if (cfResult.status === "rejected") {
+      // Expected when none of the seeds are in the CF index — not an error.
+      console.log("[v2] CF retrieval unavailable:", String(cfResult.reason));
     }
+    if (synResult.status === "rejected") {
+      console.log("[v2] synopsis retrieval failed:", String(synResult.reason));
+    }
+
+    const allMatches = fuseRRF(cfMatches, synMatches);
+
+    const engineUsed: "cf" | "synopsis" | "hybrid" =
+      cfMatches.length > 0 && synMatches.length > 0
+        ? "hybrid"
+        : cfMatches.length > 0
+          ? "cf"
+          : "synopsis";
 
     if (allMatches.length === 0) {
       return NextResponse.json({ results: [], engineUsed });
