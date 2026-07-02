@@ -6,6 +6,8 @@ import Link from "next/link";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label, Sector,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  ScatterChart, Scatter, ZAxis, ReferenceLine,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from "recharts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -57,6 +59,13 @@ function scoreColor(score: number): string {
   return "#6b6e76";
 }
 
+// Deterministic per-id jitter in [-0.5, 0.5) — pure (no Math.random), so it's
+// lint-safe inside render and stays stable across re-renders (dots don't dance).
+function seededJitter(id: number, salt: number): number {
+  const x = Math.sin(id * 12.9898 + salt * 78.233) * 43758.5453;
+  return x - Math.floor(x) - 0.5;
+}
+
 // ─── Donut active shape (pop-out + glow on hover) ────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +113,35 @@ function BarTooltip({ active, payload, label }: any) {
     <div className="bg-ink-2 border border-line rounded-xl px-3 py-2 text-sm shadow-xl">
       <p className="font-semibold text-paper">Score {label}</p>
       <p className="text-paper-2">{payload[0].value} anime</p>
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TasteTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  const diff = p.you - p.community;
+  const tag = Math.abs(diff) < 0.5 ? "about the same" : `${diff > 0 ? "+" : ""}${diff.toFixed(1)} vs crowd`;
+  return (
+    <div className="bg-ink-2 border border-line rounded-lg px-3 py-2 text-sm shadow-xl max-w-[210px]">
+      <p className="font-semibold text-paper truncate">{p.title}</p>
+      <p className="text-paper-2">
+        You {p.you} · MAL {p.community?.toFixed(1)} ·{" "}
+        <span className={diff >= 0 ? "text-accent" : "text-danger"}>{tag}</span>
+      </p>
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RadarTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div className="bg-ink-2 border border-line rounded-lg px-3 py-2 text-sm shadow-xl">
+      <p className="font-semibold text-paper">{p.genre}</p>
+      <p className="text-paper-2">{p.count} anime</p>
     </div>
   );
 }
@@ -212,6 +250,51 @@ export default function DashboardPage() {
       .slice(0, 8)
       .map(([name, count]) => ({ name, count }));
   }, [anime]);
+
+  // "You vs the crowd" — your score vs the MAL community average per rated anime.
+  // Jitter spreads the whole-number scores apart so stacked dots stop overplotting;
+  // community/you keep the TRUE values for the tooltip + delta stat.
+  const tasteData = useMemo(
+    () =>
+      anime
+        .filter((e) => e.list_status.score > 0 && typeof e.node.mean === "number")
+        .map((e) => {
+          const community = e.node.mean as number;
+          const you = e.list_status.score;
+          return {
+            x: community + seededJitter(e.node.id, 1) * 0.16,
+            y: you + seededJitter(e.node.id, 2) * 0.6,
+            community,
+            you,
+            title: e.node.title,
+          };
+        }),
+    [anime]
+  );
+
+  // Average gap between your scores and the community's (positive = you rate higher)
+  const tasteDelta = useMemo(() => {
+    if (tasteData.length === 0) return 0;
+    return tasteData.reduce((s, d) => s + (d.you - d.community), 0) / tasteData.length;
+  }, [tasteData]);
+
+  // Shared axis range, zoomed to the data so the cluster fills the frame
+  // (and the y = x diagonal stays a true 45° line).
+  const tasteDomain = useMemo<[number, number]>(() => {
+    if (tasteData.length === 0) return [0, 10];
+    let lo = 10, hi = 0;
+    for (const d of tasteData) {
+      lo = Math.min(lo, d.community, d.you);
+      hi = Math.max(hi, d.community, d.you);
+    }
+    return [Math.max(0, Math.floor(lo) - 0.5), Math.min(10.5, Math.ceil(hi) + 0.5)];
+  }, [tasteData]);
+
+  // Genre affinity radar — top genres by how many you've completed
+  const radarData = useMemo(
+    () => genreData.slice(0, 6).map((g) => ({ genre: g.name, count: g.count })),
+    [genreData]
+  );
 
   const totalPages = Math.ceil(anime.length / PAGE_SIZE);
   const pagedAnime = anime.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -350,6 +433,55 @@ export default function DashboardPage() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Charts row 2 — taste comparison + genre radar */}
+        {tasteData.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+            {/* You vs the crowd */}
+            <div className="rounded-lg border border-line bg-ink-2 p-6">
+              <div className="flex items-baseline justify-between mb-1 gap-2">
+                <p className="text-xs uppercase tracking-widest text-paper-3">You vs the crowd</p>
+                <p className="text-xs text-paper-3 whitespace-nowrap">
+                  you rate{" "}
+                  <span className={tasteDelta >= 0 ? "text-accent font-bold" : "text-danger font-bold"}>
+                    {tasteDelta >= 0 ? "+" : ""}{tasteDelta.toFixed(1)}
+                  </span>{" "}
+                  vs avg
+                </p>
+              </div>
+              <p className="text-xs text-paper-3 mb-3">your score vs the MAL average — above the line = you rated it higher</p>
+              <ResponsiveContainer width="100%" height={210}>
+                <ScatterChart margin={{ top: 6, right: 12, bottom: 0, left: -2 }}>
+                  <CartesianGrid stroke="rgba(255,255,255,0.05)" />
+                  <XAxis type="number" dataKey="x" name="MAL avg" domain={tasteDomain} allowDecimals={false}
+                    tick={{ fill: "#74706a", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis type="number" dataKey="y" name="You" domain={tasteDomain} allowDecimals={false} width={30}
+                    tick={{ fill: "#74706a", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <ZAxis range={[18, 18]} />
+                  <ReferenceLine segment={[{ x: tasteDomain[0], y: tasteDomain[0] }, { x: tasteDomain[1], y: tasteDomain[1] }]} stroke="#74706a" strokeDasharray="4 4" />
+                  <Tooltip content={<TasteTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "rgba(255,255,255,0.12)" }} />
+                  <Scatter data={tasteData} fill="#46c06a" fillOpacity={0.4} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Genre affinity radar */}
+            <div className="rounded-lg border border-line bg-ink-2 p-6">
+              <p className="text-xs uppercase tracking-widest text-paper-3 mb-1">Genre affinity</p>
+              <p className="text-xs text-paper-3 mb-3">your most-watched genres</p>
+              <ResponsiveContainer width="100%" height={210}>
+                <RadarChart data={radarData} outerRadius="70%">
+                  <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                  <PolarAngleAxis dataKey="genre" tick={{ fill: "#8f8a82", fontSize: 11 }} />
+                  <Radar dataKey="count" stroke="#46c06a" strokeWidth={2} fill="#46c06a" fillOpacity={0.28} />
+                  <Tooltip content={<RadarTooltip />} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
           </div>
         )}
 

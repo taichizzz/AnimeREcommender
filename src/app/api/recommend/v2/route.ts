@@ -80,6 +80,55 @@ function applyDislikeFilters(matches: AnimeMatch[], dislikes: string[]): AnimeMa
   });
 }
 
+// ── Franchise filter ─────────────────────────────────────────────────────────
+// Sequels/prequels/spin-offs of a SEED should never be recommended ("you loved
+// Fate/stay night, here's more Fate" is useless). The LLM prompt asks for this
+// but can't be trusted with it, so we enforce it code-side before the LLM.
+
+const FRANCHISE_STOPWORDS = new Set([
+  "the", "a", "an", "my", "no", "to", "is", "of", "and", "in", "for", "wa", "ga", "ni",
+]);
+
+// Coarse franchise signature: cut the subtitle, strip season/part/format
+// markers, return the leading significant words.
+function franchiseKey(title: string | null | undefined): string {
+  if (!title) return "";
+  let t = title.toLowerCase();
+  t = t.split(/[:：]| - | – /)[0];
+  t = t
+    .replace(/\b(season|part|cour)\s*\d+\b/g, " ")
+    .replace(/\b\d+(st|nd|rd|th)\s+season\b/g, " ")
+    .replace(/\b(2nd|3rd|final|movie|ova|specials?)\b/g, " ")
+    .replace(/\b(ii|iii|iv|v|vi|vii)\b/g, " ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = t.split(" ").filter((w) => w && !FRANCHISE_STOPWORDS.has(w));
+  return words.slice(0, 2).join(" ");
+}
+
+// Same franchise: identical keys, or a shared distinctive first word (≥4 chars
+// so "one" or "new" can't false-positive an unrelated title).
+function sharesFranchise(aKey: string, bKey: string): boolean {
+  if (!aKey || !bKey) return false;
+  if (aKey === bKey) return true;
+  const a = aKey.split(" ")[0];
+  const b = bKey.split(" ")[0];
+  return a === b && a.length >= 4;
+}
+
+function applyFranchiseFilter(
+  matches: AnimeMatch[],
+  seedTitles: (string | null | undefined)[]
+): AnimeMatch[] {
+  const seedKeys = seedTitles.map(franchiseKey).filter(Boolean);
+  if (seedKeys.length === 0) return matches;
+  return matches.filter((m) => {
+    const keys = [franchiseKey(m.title), franchiseKey(m.title_english)];
+    return !seedKeys.some((sk) => keys.some((k) => sharesFranchise(sk, k)));
+  });
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
 
@@ -161,10 +210,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ results: [], engineUsed });
     }
 
-    // 2) Filter out candidates that match user's structured dislikes
+    // 2) Hard filters, in order:
+    //    a) same-franchise-as-seed (sequels/prequels/spin-offs of what they gave us)
+    //    b) structured dislikes from the quiz
+    const seedRows = await getAnimeBasicsByMalIds(liked);
+    const seedTitles = seedRows.flatMap((s) => [s.title, s.title_english]);
+
+    const noFranchise = applyFranchiseFilter(allMatches, seedTitles);
+    if (noFranchise.length < allMatches.length) {
+      console.log(`[v2] franchise filter dropped ${allMatches.length - noFranchise.length} seed-franchise candidate(s)`);
+    }
+
     const filtered = quiz?.dislikes
-      ? applyDislikeFilters(allMatches, quiz.dislikes)
-      : allMatches;
+      ? applyDislikeFilters(noFranchise, quiz.dislikes)
+      : noFranchise;
 
     const candidatePool = filtered.slice(0, TO_RERANK);
 
@@ -176,8 +235,7 @@ export async function POST(request: Request) {
 
     if (process.env.GROQ_API_KEY && candidatePool.length > 0) {
       try {
-        // Pull seed titles for the prompt
-        const seedRows = await getAnimeBasicsByMalIds(liked);
+        // Seed titles for the prompt (fetched above for the franchise filter)
         const seedById = new Map(seedRows.map((s) => [s.mal_id, s]));
 
         const seedsForPrompt = liked

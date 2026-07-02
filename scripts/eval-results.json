@@ -1,12 +1,12 @@
 {
-  "ranAt": "2026-06-24T10:16:14.861Z",
+  "ranAt": "2026-07-02T00:37:44.966Z",
   "baseUrl": "http://localhost:3000",
   "agg": {
     "profiles": 12,
     "passed": 11,
     "failed": 1,
     "avgDistinctFranchises": 9.909090909090908,
-    "totalFranchiseLeaks": 5,
+    "totalFranchiseLeaks": 0,
     "engineMix": {
       "synopsis": 2,
       "hybrid": 10
@@ -15,27 +15,27 @@
   "rows": [
     {
       "name": "modern_shounen",
-      "count": 10,
-      "engineUsed": "synopsis",
-      "modern": 4,
-      "distinctFranchises": 10,
-      "franchiseLeaks": 0,
-      "dislikeViolations": 0,
-      "pass": true,
-      "failures": []
-    },
-    {
-      "name": "modern_mixed",
-      "count": 10,
+      "count": 8,
       "engineUsed": "synopsis",
       "modern": 2,
-      "distinctFranchises": 10,
+      "distinctFranchises": 8,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": false,
       "failures": [
         "only 2 modern (2019+) result(s) for modern taste"
       ]
+    },
+    {
+      "name": "modern_mixed",
+      "count": 10,
+      "engineUsed": "synopsis",
+      "modern": 3,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
+      "dislikeViolations": 0,
+      "pass": true,
+      "failures": []
     },
     {
       "name": "classic_canon",
@@ -54,7 +54,7 @@
       "engineUsed": "hybrid",
       "modern": 0,
       "distinctFranchises": 10,
-      "franchiseLeaks": 1,
+      "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
       "failures": []
@@ -64,7 +64,7 @@
       "count": 10,
       "engineUsed": "hybrid",
       "modern": 0,
-      "distinctFranchises": 10,
+      "distinctFranchises": 9,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
@@ -108,8 +108,8 @@
       "count": 10,
       "engineUsed": "hybrid",
       "modern": 0,
-      "distinctFranchises": 9,
-      "franchiseLeaks": 1,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
       "failures": []
@@ -140,9 +140,9 @@
       "name": "fate_franchise",
       "count": 10,
       "engineUsed": "hybrid",
-      "modern": 1,
+      "modern": 0,
       "distinctFranchises": 10,
-      "franchiseLeaks": 3,
+      "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
       "failures": []

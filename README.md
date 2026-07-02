@@ -1,6 +1,6 @@
 # Animer
 
-A personalized anime recommender that combines semantic synopsis embeddings, collaborative filtering, and an LLM re-ranker to suggest anime based on what you actually love — not just what shares a genre.
+A personalized anime recommender that blends collaborative filtering and semantic synopsis embeddings, then runs a two-stage LLM pipeline that picks your matches and explains each one in your terms — not just what shares a genre.
 
 Built as a learning project to explore modern recommendation systems beyond simple cosine similarity.
 
@@ -11,41 +11,50 @@ Built as a learning project to explore modern recommendation systems beyond simp
                       │   Your seeds + quiz answers   │
                       │  (manual picks OR MAL list)   │
                       └──────────────┬───────────────┘
-                                     │
+                                     │  (both engines run in parallel)
                 ┌────────────────────┼────────────────────┐
                 ▼                                          ▼
-   Synopsis embeddings (BGE-base)             Collaborative-filtering
-   "what an anime is about"                   embeddings (ALS, Phase 3)
+   Collaborative filtering                    Synopsis embeddings (BGE-base)
+   "what an anime feels like"                 "what an anime is about"
+   (~7.7k anime with rating signal)           (all ~14k anime, incl. new ones)
                 │                                          │
                 └────────────────────┬────────────────────┘
                                      ▼
-                       Supabase pgvector → top 30 candidates
+                  Reciprocal Rank Fusion → one candidate pool
                                      │
                                      ▼
-                  Filter: format, sequels, dislikes, watched
+        Hard filters: seed-franchise (no "more Fate"), dislikes,
+                formats, sequels, already-watched
                                      │
                                      ▼
-                     Groq Llama 3.3 70B re-ranker
-              (uses your seeds + quiz signals + tags)
+             Stage 1 · gpt-oss-120b (reasoning model)
+          selects + orders the 10, emits a rationale each
                                      │
                                      ▼
-                          Top 10 with personal reasons
+             Stage 2 · Llama 3.3 70B (writer model)
+        turns each rationale + full synopsis into a personal,
+                  specific one-sentence reason
+                                     │
+                                     ▼
+                     Top 10 with personal reasons
 ```
 
 ## Features
 
 - **Two entry modes**
-  - **Pick Your Own** — search anime and select up to 10 to seed recommendations
-  - **From My MAL List** — log in with MAL OAuth, the recommender uses your full rated history with low scores acting as negative signals
+  - **Pick your own** — search anime and select up to 10 to seed recommendations
+  - **From my MAL list** — log in with MAL OAuth, the recommender uses your full rated history with low scores acting as negative signals
 - **Interactive onboarding quiz** — 4 questions before recommendations
-  - Which of your picks is your favorite?
+  - Which of your picks is your favorite? (infinite 3D poster wheel — drag, scroll, or tap)
   - What hooked you about it? (story / atmosphere / characters / custom)
   - What mood are you in? (multi-select chips)
-  - Anything you don't want? (multi-select chips → real SQL filters)
-- **Smart filtering** — auto-excludes sequels, OVAs, recaps, already-watched anime, and genres you flagged as dislikes
-- **LLM-generated reasons** — Groq writes a personal sentence per recommendation grounded in your specific answers
-- **"How the AI thought about your taste"** — collapsible panel showing Groq's overall reasoning
-- **Dashboard** — your MAL stats with donut chart of statuses, score distribution, top genres, and a paginated grid of all rated anime
+  - Anything you don't want? (multi-select chips → real genre filters)
+- **Hybrid retrieval** — CF and synopsis engines run in parallel and are fused with Reciprocal Rank Fusion; anime ranked highly by both rise to the top, and modern anime missing from the CF index still surface via synopsis. The response reports which engine(s) contributed (`engineUsed: hybrid | cf | synopsis`).
+- **Two-stage LLM reasoning** — a reasoning model (gpt-oss-120b) does the judgment-heavy selection and emits a per-pick rationale; a writer model (Llama 3.3 70B) turns each rationale into one vivid, non-generic sentence grounded in your quiz answers. Separate models = separate rate-limit budgets.
+- **Hard franchise filter** — sequels/prequels/spin-offs of your seeds are removed code-side before the LLM ever sees them.
+- **Feedback loop** — Like / Dislike / Not interested on every recommendation, stored per user in Supabase (the seed of an in-house ratings dataset).
+- **Eval harness** — `npm run eval` runs 12 fixed taste profiles through the live API and checks hard rules (no franchise leaks, dislikes respected, modern-taste coverage) plus tracked metrics (diversity, engine mix) against a saved baseline.
+- **Dashboard** — MAL stats with status donut, score distribution, top genres, a "you vs the crowd" scatter (your score vs MAL average, jittered to stay readable), and a genre-affinity radar.
 
 ## Tech stack
 
@@ -53,11 +62,11 @@ Built as a learning project to explore modern recommendation systems beyond simp
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind v4, Recharts |
 | Auth | MyAnimeList OAuth 2.0 (PKCE plain method — MAL doesn't support S256) |
-| LLM | Groq Llama 3.3 70B (free tier, ~6000 req/day) |
+| LLM | Groq: `openai/gpt-oss-120b` (selection) + `llama-3.3-70b-versatile` (reason writing), both free tier |
 | Vector DB | Supabase Postgres + pgvector |
 | Anime metadata | AniList GraphQL (14k+ anime) |
-| Synopsis embeddings | BGE-base (768-dim) trained offline in Colab |
-| CF embeddings | ALS via `implicit` library, trained on Kaggle MAL dataset (Phase 3) |
+| Synopsis embeddings | BGE-base (768-dim), built offline in Colab |
+| CF embeddings | 64-dim item vectors trained on the Kaggle MAL ratings dataset (~7M ratings, ~73k users) |
 | Hosting | Vercel |
 
 ## Getting started
@@ -72,7 +81,7 @@ npm install
 
 Anime embeddings live in Supabase, not in this repo. See [`ml/README.md`](ml/README.md) for the offline pipeline that builds them.
 
-Short version: create a free Supabase project → run `ml/schema.sql` → run the Colab notebook in `ml/colab_build_index.ipynb` → ~10 minutes later you have 14k anime indexed.
+Short version: create a free Supabase project → run `ml/schema.sql`, `ml/schema_cf.sql`, and `ml/schema_feedback.sql` → run the Colab notebooks in `ml/` → ~10 minutes later you have 14k anime indexed (plus CF vectors and the feedback table).
 
 ### 3. Environment variables
 
@@ -83,10 +92,10 @@ Create `.env.local`:
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_KEY=eyJ...
 
-# Groq for LLM re-ranking (required — get free key at console.groq.com/keys)
+# Groq for the two-stage LLM pipeline (required — free key at console.groq.com/keys)
 GROQ_API_KEY=gsk_...
 
-# MAL OAuth (required for "From My MAL List" mode)
+# MAL OAuth (required for "From my MAL list" mode)
 # Register your app at myanimelist.net/apiconfig
 MAL_CLIENT_ID=...
 MAL_CLIENT_SECRET=...
@@ -108,6 +117,7 @@ Open http://localhost:3000.
 - `npm run build` — production build
 - `npm run start` — run production build
 - `npm run lint` — ESLint
+- `npm run eval` — recommendation-quality eval (needs the dev server running; `--save-baseline` to set a new baseline)
 
 ## API routes
 
@@ -142,17 +152,22 @@ Response:
       "imageUrl": "...",
       "score": 84,
       "year": 2015,
-      "reason": "<personal one-sentence reason from Groq>"
+      "reason": "<personal one-sentence reason>"
     }
   ],
   "llmUsed": true,
-  "thinking": "<2-3 sentences explaining the LLM's overall approach>"
+  "engineUsed": "hybrid",
+  "thinking": "<2-3 sentences on how the model read your taste>"
 }
 ```
 
 ### `POST /api/recommend/fromlist`
 
 Same as above but builds seeds from your MAL list (requires OAuth). Query param `?seeds_only=1` returns just the quiz-seed candidates without running the full pipeline.
+
+### `POST /api/feedback`
+
+Records a reaction to a recommendation: `{ animeMalId, signal: "up" | "down" | "not_interested" | "none", userKey }`. Upserts one row per user+anime; `"none"` clears it.
 
 ### `GET /api/auth/{login,callback,logout,me}`
 
@@ -171,45 +186,57 @@ Title search — used by manual mode's picker (powered by Jikan).
 ```
 src/
   app/
-    page.tsx                          # Home (modes + quiz + results)
+    page.tsx                          # Landing
+    recommend/page.tsx                # Picks → quiz → results flow
     dashboard/page.tsx                # MAL stats charts
     api/
       auth/{login,callback,logout,me}/
       mal/animelist/                  # Paginated MAL list fetch
+      feedback/                       # Like/Dislike/Not-interested storage
       recommend/
-        v2/                           # Main pgvector + Groq pipeline
+        v2/                           # Hybrid retrieval + two-stage LLM pipeline
         fromlist/                     # MAL list → v2
-        anilist/                      # Older AniList-based pipeline (kept for comparison)
+        anilist/                      # Older AniList-based pipeline (legacy)
         route.ts                      # Original Jikan pipeline (legacy)
       search/                         # Jikan title search
   components/
-    RecommendQuiz.tsx                 # 4-step wizard
+    RecommendQuiz.tsx                 # 4-step wizard + favorite wheel
   lib/
     supabase.ts                       # pgvector queries + weighted user-vector math
-    groq.ts                           # LLM re-ranker + prompt
+    groq.ts                           # Two-stage LLM pipeline (select → write)
     anilist.ts                        # AniList GraphQL client
     jikan.ts                          # Jikan client (legacy)
 
+scripts/
+  eval.mjs                            # Recommendation-quality eval harness
+
 ml/
   schema.sql                          # Supabase table + match_anime RPC
-  schema_cf.sql                       # CF column + match_anime_cf RPC (Phase 3)
+  schema_cf.sql                       # CF column + match_anime_cf RPC
+  schema_feedback.sql                 # Feedback table (run once in Supabase)
   colab_build_index.ipynb             # Synopsis embeddings
-  colab_train_cf.ipynb                # Collaborative filtering (Phase 3)
+  colab_train_cf.ipynb                # Collaborative filtering (ALS)
+  colab_train_two_tower.ipynb         # Neural two-tower CF (BPR)
   scripts/                            # Local-machine versions of the above
 ```
 
 ## Roadmap
 
 - ✅ Synopsis embeddings + pgvector retrieval
-- ✅ Groq LLM re-rank with quiz signals
+- ✅ LLM re-rank with quiz signals
 - ✅ MAL OAuth + dashboard
-- 🚧 Collaborative-filtering embeddings (Phase 3 — in progress)
-- 🔜 Hybrid scoring (blend synopsis + CF) once both are live
-- 🔜 Online learning from user click feedback
+- ✅ Collaborative-filtering embeddings
+- ✅ Hybrid retrieval (CF + synopsis fused with RRF)
+- ✅ Two-stage LLM (reasoning model selects, writer model explains)
+- ✅ Franchise filter, feedback loop, eval harness
+- 🔜 Content→CF cold-start tower (generate CF-quality vectors for brand-new anime from their content)
+- 🔜 Retrain CF on a newer ratings dump (current one ends ~2018)
+- 🔜 Retrain on our own collected feedback once there's enough signal
 
 ## Notes / honest limitations
 
-- Synopsis embeddings cluster on textual similarity, not viewing experience. Two anime with similar synopses can feel completely different to watch. Phase 3 (CF) addresses this.
-- Groq's Llama 3.3 70B is good but not great at strict instruction-following; reasons sometimes still drift toward templated phrasing. A model swap to GitHub Models (free Claude/GPT-5) would help if needed.
-- The AniList index is ~14k anime — covers virtually anything you've heard of, but obscure ONAs / Chinese-coproductions may be missing.
+- **The CF index ends around 2018** — it's trained on a ratings dump from that era, so newer anime have no collaborative signal and are carried by the synopsis engine (that's what the hybrid fusion is for). The cold-start tower on the roadmap is the real fix.
+- Synopsis embeddings cluster on textual similarity, not viewing experience. Two anime with similar synopses can feel completely different to watch.
+- The franchise filter is a title heuristic (shared distinctive leading words). It catches the Fate/FMA-style leaks the eval measures, but an obscurely-renamed spin-off can slip through, and a rare false positive is possible.
+- The AniList index is ~14k anime — covers virtually anything you've heard of, but obscure ONAs / Chinese co-productions may be missing.
 - MAL OAuth uses the `plain` PKCE method, not `S256`, because MAL doesn't support S256 (yes, really).
