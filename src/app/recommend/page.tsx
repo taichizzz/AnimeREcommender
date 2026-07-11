@@ -68,6 +68,9 @@ export default function RecommendPage() {
   const [feedback, setFeedback] = useState<Record<number, FeedbackSignal>>({});
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  // Context of the current recommendation batch — sent with each feedback click
+  // so the stored reaction is trainable ("users seeded with X disliked Y").
+  const recContextRef = useRef<{ seedIds: number[]; engine: string }>({ seedIds: [], engine: "" });
 
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
 
@@ -111,7 +114,13 @@ export default function RecommendPage() {
       await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ animeMalId: r.malId, signal: next, userKey: getClientId() }),
+        body: JSON.stringify({
+          animeMalId: r.malId,
+          signal: next,
+          userKey: getClientId(),
+          seedMalIds: recContextRef.current.seedIds.slice(0, 20),
+          engineUsed: recContextRef.current.engine || undefined,
+        }),
       });
     } catch {
       // best-effort; the UI already reflects the change
@@ -212,6 +221,10 @@ export default function RecommendPage() {
         setRecs([]);
         return;
       }
+      recContextRef.current = {
+        seedIds: selected.map((a) => a.id),
+        engine: data.engineUsed ?? "",
+      };
       setRecs(data.results);
       setThinking(data.thinking ?? "");
       setQuizOpen(false);
@@ -270,9 +283,14 @@ export default function RecommendPage() {
         setRecs([]);
         return;
       }
+      const seedList: SeedItem[] = data.seeds ?? seeds;
+      recContextRef.current = {
+        seedIds: seedList.map((s) => s.id),
+        engine: data.engineUsed ?? "",
+      };
       setRecs(data.results);
       setThinking(data.thinking ?? "");
-      setSeeds(data.seeds ?? seeds);
+      setSeeds(seedList);
       setQuizOpen(false);
     } catch {
       setError("Network error while recommending");

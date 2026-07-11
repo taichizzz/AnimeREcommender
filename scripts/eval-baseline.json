@@ -1,12 +1,12 @@
 {
-  "ranAt": "2026-06-24T10:16:14.861Z",
+  "ranAt": "2026-07-11T08:16:04.222Z",
   "baseUrl": "http://localhost:3000",
   "agg": {
     "profiles": 12,
-    "passed": 11,
-    "failed": 1,
-    "avgDistinctFranchises": 9.909090909090908,
-    "totalFranchiseLeaks": 5,
+    "passed": 10,
+    "failed": 2,
+    "avgDistinctFranchises": 9.9,
+    "totalFranchiseLeaks": 0,
     "engineMix": {
       "synopsis": 2,
       "hybrid": 10
@@ -17,12 +17,14 @@
       "name": "modern_shounen",
       "count": 10,
       "engineUsed": "synopsis",
-      "modern": 4,
+      "modern": 2,
       "distinctFranchises": 10,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
-      "pass": true,
-      "failures": []
+      "pass": false,
+      "failures": [
+        "only 2 modern (2019+) result(s) for modern taste"
+      ]
     },
     {
       "name": "modern_mixed",
@@ -54,7 +56,7 @@
       "engineUsed": "hybrid",
       "modern": 0,
       "distinctFranchises": 10,
-      "franchiseLeaks": 1,
+      "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
       "failures": []
@@ -64,7 +66,7 @@
       "count": 10,
       "engineUsed": "hybrid",
       "modern": 0,
-      "distinctFranchises": 10,
+      "distinctFranchises": 9,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
@@ -85,7 +87,7 @@
       "name": "isekai_no_romance",
       "count": 10,
       "engineUsed": "hybrid",
-      "modern": 0,
+      "modern": 1,
       "distinctFranchises": 10,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
@@ -107,9 +109,9 @@
       "name": "sports_hater",
       "count": 10,
       "engineUsed": "hybrid",
-      "modern": 0,
-      "distinctFranchises": 9,
-      "franchiseLeaks": 1,
+      "modern": 1,
+      "distinctFranchises": 10,
+      "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
       "failures": []
@@ -142,7 +144,7 @@
       "engineUsed": "hybrid",
       "modern": 1,
       "distinctFranchises": 10,
-      "franchiseLeaks": 3,
+      "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
       "failures": []
