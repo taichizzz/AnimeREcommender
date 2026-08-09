@@ -10,9 +10,14 @@ setGlobalDispatcher(new Agent({ connect: { lookup: (hostname, options, cb) => {
 
 const JIKAN_BASE = "https://api.jikan.moe/v4";
 
-export async function jikanGet<T>(path: string): Promise<T> {
+export async function jikanGet<T>(path: string, timeoutMs = 4000): Promise<T> {
   const url = `${JIKAN_BASE}${path}`;
-  const res = await fetch(url, { cache: "no-store" });
+  // Bound the wait — when MyAnimeList refuses Jikan upstream, requests can hang
+  // or 504, and callers that have a fallback shouldn't be held up by it.
+  const res = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
