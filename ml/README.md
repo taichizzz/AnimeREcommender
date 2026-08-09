@@ -27,7 +27,9 @@ You need Phase 1 at minimum. Phase 3 is the bigger quality win, since synopsis t
 
 ### 1. Schema
 
-In Supabase **SQL Editor → New query**, paste [`schema.sql`](schema.sql) → Run. Creates the `anime` table, pgvector extension, and the `match_anime` RPC.
+In Supabase **SQL Editor → New query**, paste [`schema.sql`](schema.sql) → Run. This creates the `anime` table, enables pgvector, and installs the synopsis-search RPC.
+
+> **Fresh-install note:** the current web client calls an RPC named `match_anime` with a query-vector signature, while `schema.sql` currently defines `match_anime_for_user` with seed arrays. Align the SQL function with the call in `src/lib/supabase.ts` before relying on a fresh deployment. Existing hosted databases may already contain the expected `match_anime` RPC.
 
 ### 2. Build the index
 
@@ -79,7 +81,7 @@ The notebook:
 5. Matches CF anime IDs to your Supabase `mal_id` column
 6. Uploads `cf_embedding` for each match
 
-When done, run the sanity-check query in `schema_cf.sql` to confirm `cf_embedding` is populated for ~12k anime.
+When done, run the sanity-check query in `schema_cf.sql` to confirm `cf_embedding` is populated. The raw dataset contains roughly 12k anime; after filtering and MAL-ID matching, the deployed index can be smaller (the current application comments describe roughly 7.7k covered titles).
 
 ### Why ALS over a custom neural network?
 
@@ -87,18 +89,20 @@ ALS is well-understood, fast (no GPU strictly needed), and produces high-quality
 
 ---
 
-## Switching pipelines in the app
+## Runtime use
 
-Currently `src/lib/supabase.ts` calls `match_anime` (synopsis). To use CF instead, change the RPC name to `match_anime_cf` and update the user-vector dimension from 768 → 64. We'll add a runtime toggle once both are populated and benchmarked.
+The main recommendation route runs both pipelines in parallel. `src/lib/supabase.ts` selects `match_anime_cf` for 64-dimensional CF vectors and `match_anime` for 768-dimensional synopsis vectors; `src/app/api/recommend/v2/route.ts` fuses both ranked lists with Reciprocal Rank Fusion. If CF has no overlap for the supplied seeds, synopsis retrieval can still carry the request.
 
 ## File reference
 
 ```
 ml/
-  schema.sql                  # base table + synopsis match_anime RPC
+  schema.sql                  # base table + current match_anime_for_user RPC
   schema_cf.sql               # cf_embedding column + match_anime_cf RPC
+  schema_feedback.sql         # recommendation reaction table
   colab_build_index.ipynb     # Phase 1: fetch + embed synopses
   colab_train_cf.ipynb        # Phase 3: train + upload CF embeddings
+  colab_train_two_tower.ipynb # experimental neural CF alternative
   requirements.txt            # local-machine deps for the scripts/
   scripts/
     fetch_anime.py            # AniList → anime.jsonl

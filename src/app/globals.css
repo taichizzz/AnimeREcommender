@@ -1,36 +1,75 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0b0b0e;
-  --foreground: #ece7dd;
+  --background: #171717;
+  --foreground: #ffffff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 
-  /* ── Ink Noir + Emerald design system ──
-     One accent var to rule them all — swap --color-accent to restyle the brand. */
-  --color-ink: #0b0b0e;        /* page background        */
-  --color-ink-2: #14141a;      /* card / surface         */
-  --color-ink-3: #20202a;      /* raised (poster wells)  */
-  --color-line: #26262e;       /* hairline border        */
-  --color-line-2: #34343f;     /* emphasized border      */
-  --color-paper: #ece7dd;      /* primary text (warm off-white) */
-  --color-paper-2: #8f8a82;    /* muted text             */
-  --color-paper-3: #74706a;    /* dim text / mono labels */
-  --color-accent: #46c06a;     /* emerald — brand + positive */
-  --color-accent-ink: #04240f; /* text on emerald fills  */
-  --color-danger: #e2675b;     /* dislike / negative only */
-  --color-danger-line: #6e2a24;
+  /* ── Monochrome Glass ──
+     Three colours: #171717 canvas, white, ash. Surfaces are translucent white
+     (frosted by .glass), so cover art is the only chromatic content on screen.
+     The old layout drives these tokens, so restyling happens here, not in JSX. */
+  --color-ink: #171717;                      /* page canvas            */
+  --color-ink-2: rgba(255, 255, 255, 0.05);  /* glass surface          */
+  --color-ink-3: rgba(255, 255, 255, 0.10);  /* raised (poster wells)  */
+  --color-line: rgba(255, 255, 255, 0.12);   /* hairline border        */
+  --color-line-2: rgba(255, 255, 255, 0.22); /* emphasized border      */
+  --color-paper: #ffffff;                    /* primary text (chalk)   */
+  --color-paper-2: #9a9a9a;                  /* muted text (ash)       */
+  --color-paper-3: #7c7c7c;                  /* dim text / labels      */
+  --color-accent: #ffffff;                   /* brand + positive = white */
+  --color-accent-ink: #171717;               /* text on white fills    */
+  --color-danger: #ffffff;                   /* dislike — outline, not colour */
+  --color-danger-line: rgba(255, 255, 255, 0.3);
+
+  /* Aliases kept so the atelier-styled screens keep resolving */
+  --color-canvas: #171717;
+  --color-chalk: #ffffff;
+  --color-ash: #9a9a9a;
+  --font-atelier: var(--font-inter);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.003em;
+}
+
+/* Frosted glass with a specular top edge — the "glossy" surface treatment.
+   Pairs with the translucent --color-ink-* tokens above. */
+.glass {
+  @apply backdrop-blur-xl backdrop-saturate-150;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Lifts on hover — used on result cards */
+.glass-hover {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+              background-color 0.25s ease,
+              box-shadow 0.25s ease;
+}
+.glass-hover:hover {
+  transform: translateY(-3px);
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-appear,
+  .liquid-appear,
+  .glass-hover { animation: none !important; transition: none !important; }
+  .glass-hover:hover { transform: none; }
 }
 
 @keyframes cardAppear {

@@ -71,6 +71,13 @@ Built as a learning project to explore modern recommendation systems beyond simp
 
 ## Getting started
 
+For deeper reference material, see:
+
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — runtime design, recommendation data flow, fallbacks, and extension points
+- [`API_REFERENCE.md`](API_REFERENCE.md) — request/response contracts for every active route
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — local workflow, verification, and pull-request guidance
+- [`ml/README.md`](ml/README.md) — database schemas and offline embedding/model pipelines
+
 ### 1. Install dependencies
 
 ```bash
@@ -171,11 +178,11 @@ Records a reaction to a recommendation: `{ animeMalId, signal: "up" | "down" | "
 
 ### `GET /api/auth/{login,callback,logout,me}`
 
-MAL OAuth flow + session check.
+MAL OAuth flow + session check using HTTP-only access and refresh-token cookies.
 
 ### `GET /api/mal/animelist`
 
-Returns your full MAL list (all statuses, paginated server-side).
+Returns your completed MAL list, paginated server-side.
 
 ### `GET /api/search?q=...`
 

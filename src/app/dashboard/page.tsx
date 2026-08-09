@@ -44,19 +44,23 @@ type AnimeEntry = {
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
+// Charts are the one place colour is allowed — it encodes data, not decoration.
+// Desaturated/filmic hues so they sit on the #171717 canvas without shouting,
+// and every chart still carries a text label or legend alongside the colour.
 const STATUS_COLORS: Record<string, string> = {
-  Completed:      "#46c06a",
-  "Plan to Watch": "#4a90b0",
-  Watching:       "#c9a24b",
-  Dropped:        "#c0604a",
-  "On Hold":      "#8a8278",
+  Completed:      "#7dd3a0",  // green   — finished
+  "Plan to Watch": "#7fb3d5",  // blue    — queued
+  Watching:       "#e8b661",  // amber   — in progress
+  Dropped:        "#d98d7a",  // terracotta — abandoned
+  "On Hold":      "#9d93c4",  // violet  — paused
 };
 
+// Sequential + semantic: green high, amber middling, terracotta low.
 function scoreColor(score: number): string {
-  if (score >= 9) return "#46c06a";
-  if (score >= 7) return "#7cc98a";
-  if (score >= 5) return "#c9a24b";
-  return "#6b6e76";
+  if (score >= 9) return "#7dd3a0";
+  if (score >= 7) return "#a8cf8e";
+  if (score >= 5) return "#e8b661";
+  return "#d98d7a";
 }
 
 // Deterministic per-id jitter in [-0.5, 0.5) — pure (no Math.random), so it's
@@ -150,7 +154,7 @@ function RadarTooltip({ active, payload }: any) {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-line bg-ink-2 px-5 py-4">
+    <div className="glass rounded-2xl border border-line bg-ink-2 px-5 py-4">
       <p className="text-xs uppercase tracking-widest text-paper-3 mb-1">{label}</p>
       <p className="text-2xl font-bold text-paper">{value}</p>
     </div>
@@ -361,7 +365,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
           {/* Donut — list status */}
-          <div className="rounded-lg border border-line bg-ink-2 p-6">
+          <div className="glass rounded-2xl border border-line bg-ink-2 p-6">
             <p className="text-xs uppercase tracking-widest text-paper-3 mb-4">List Status</p>
             <div className="flex items-center gap-6">
               <div style={{ width: 180, height: 180, overflow: "visible" }} className="flex-shrink-0">
@@ -369,14 +373,14 @@ export default function DashboardPage() {
                   <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                     <Pie data={statusData} dataKey="value" innerRadius={48} outerRadius={72} paddingAngle={2} startAngle={90} endAngle={-270} activeShape={ActiveDonutSlice}>
                       {statusData.map((entry) => (
-                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "#46c06a"} stroke="transparent" />
+                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? "#7fb3d5"} stroke="transparent" />
                       ))}
                       <Label content={({ viewBox }) => {
                         const vb = viewBox as { cx: number; cy: number };
                         return (
                           <text x={vb.cx} y={vb.cy} textAnchor="middle" dominantBaseline="central">
-                            <tspan x={vb.cx} dy="-0.4em" fontSize="20" fontWeight="800" fill="#ece7dd">{statusTotal}</tspan>
-                            <tspan x={vb.cx} dy="1.4em" fontSize="10" fill="#74706a">total</tspan>
+                            <tspan x={vb.cx} dy="-0.4em" fontSize="20" fontWeight="800" fill="#ffffff">{statusTotal}</tspan>
+                            <tspan x={vb.cx} dy="1.4em" fontSize="10" fill="#9a9a9a">total</tspan>
                           </text>
                         );
                       }} position="center" />
@@ -398,13 +402,13 @@ export default function DashboardPage() {
           </div>
 
           {/* Bar chart — score distribution */}
-          <div className="rounded-lg border border-line bg-ink-2 p-6">
+          <div className="glass rounded-2xl border border-line bg-ink-2 p-6">
             <p className="text-xs uppercase tracking-widest text-paper-3 mb-4">Score Distribution</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={scoreData} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="score" tick={{ fill: "#74706a", fontSize: 12 }} axisLine={false} tickLine={false} width={24} />
+                <YAxis type="category" dataKey="score" tick={{ fill: "#9a9a9a", fontSize: 12 }} axisLine={false} tickLine={false} width={24} />
                 <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={18}>
                   {scoreData.map((entry) => (
@@ -418,17 +422,17 @@ export default function DashboardPage() {
 
         {/* Genre bars */}
         {genreData.length > 0 && (
-          <div className="rounded-lg border border-line bg-ink-2 p-6 mb-6">
+          <div className="glass rounded-2xl border border-line bg-ink-2 p-6 mb-6">
             <p className="text-xs uppercase tracking-widest text-paper-3 mb-5">Top Genres</p>
             <ResponsiveContainer width="100%" height={genreData.length * 36}>
               <BarChart data={genreData} layout="vertical" margin={{ left: 0, right: 40, top: 0, bottom: 0 }}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" tick={{ fill: "#8f8a82", fontSize: 13 }} axisLine={false} tickLine={false} width={90} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "#9a9a9a", fontSize: 13 }} axisLine={false} tickLine={false} width={90} />
                 <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar dataKey="count" radius={[0, 8, 8, 0]} maxBarSize={14}
-                  label={{ position: "right", fill: "#74706a", fontSize: 12 }}>
+                  label={{ position: "right", fill: "#9a9a9a", fontSize: 12 }}>
                   {genreData.map((_, i) => (
-                    <Cell key={i} fill={i < 3 ? "#46c06a" : i < 6 ? "#2e7d4f" : "#74706a"} fillOpacity={0.8} />
+                    <Cell key={i} fill={i < 3 ? "#7fb3d5" : i < 6 ? "#5b8aa8" : "#42647a"} fillOpacity={0.9} />
                   ))}
                 </Bar>
               </BarChart>
@@ -441,7 +445,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
             {/* You vs the crowd */}
-            <div className="rounded-lg border border-line bg-ink-2 p-6">
+            <div className="glass rounded-2xl border border-line bg-ink-2 p-6">
               <div className="flex items-baseline justify-between mb-1 gap-2">
                 <p className="text-xs uppercase tracking-widest text-paper-3">You vs the crowd</p>
                 <p className="text-xs text-paper-3 whitespace-nowrap">
@@ -457,26 +461,26 @@ export default function DashboardPage() {
                 <ScatterChart margin={{ top: 6, right: 12, bottom: 0, left: -2 }}>
                   <CartesianGrid stroke="rgba(255,255,255,0.05)" />
                   <XAxis type="number" dataKey="x" name="MAL avg" domain={tasteDomain} allowDecimals={false}
-                    tick={{ fill: "#74706a", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    tick={{ fill: "#9a9a9a", fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis type="number" dataKey="y" name="You" domain={tasteDomain} allowDecimals={false} width={30}
-                    tick={{ fill: "#74706a", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    tick={{ fill: "#9a9a9a", fontSize: 11 }} axisLine={false} tickLine={false} />
                   <ZAxis range={[18, 18]} />
-                  <ReferenceLine segment={[{ x: tasteDomain[0], y: tasteDomain[0] }, { x: tasteDomain[1], y: tasteDomain[1] }]} stroke="#74706a" strokeDasharray="4 4" />
+                  <ReferenceLine segment={[{ x: tasteDomain[0], y: tasteDomain[0] }, { x: tasteDomain[1], y: tasteDomain[1] }]} stroke="#9a9a9a" strokeDasharray="4 4" />
                   <Tooltip content={<TasteTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "rgba(255,255,255,0.12)" }} />
-                  <Scatter data={tasteData} fill="#46c06a" fillOpacity={0.4} />
+                  <Scatter data={tasteData} fill="#7fb3d5" fillOpacity={0.5} />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
 
             {/* Genre affinity radar */}
-            <div className="rounded-lg border border-line bg-ink-2 p-6">
+            <div className="glass rounded-2xl border border-line bg-ink-2 p-6">
               <p className="text-xs uppercase tracking-widest text-paper-3 mb-1">Genre affinity</p>
               <p className="text-xs text-paper-3 mb-3">your most-watched genres</p>
               <ResponsiveContainer width="100%" height={210}>
                 <RadarChart data={radarData} outerRadius="70%">
                   <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                  <PolarAngleAxis dataKey="genre" tick={{ fill: "#8f8a82", fontSize: 11 }} />
-                  <Radar dataKey="count" stroke="#46c06a" strokeWidth={2} fill="#46c06a" fillOpacity={0.28} />
+                  <PolarAngleAxis dataKey="genre" tick={{ fill: "#9a9a9a", fontSize: 11 }} />
+                  <Radar dataKey="count" stroke="#7dd3a0" strokeWidth={2} fill="#7dd3a0" fillOpacity={0.22} />
                   <Tooltip content={<RadarTooltip />} />
                 </RadarChart>
               </ResponsiveContainer>

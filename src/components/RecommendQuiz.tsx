@@ -108,7 +108,7 @@ export function RecommendQuiz({
   const favorite = picks.find((p) => p.id === favoriteId);
 
   return (
-    <div className="rounded-lg border border-line bg-ink-2 p-6 mb-8">
+    <div className="glass rounded-2xl border border-line bg-ink-2 p-6 mb-8">
       {/* Progress dots */}
       <div className="flex gap-2 justify-center mb-8">
         {Array.from({ length: totalSteps }).map((_, i) => (
@@ -152,10 +152,10 @@ export function RecommendQuiz({
                 <button
                   key={opt.value}
                   onClick={() => setHookedChoice(opt.value)}
-                  className={`group rounded-xl border-2 p-5 text-left transition-all duration-200
+                  className={`group rounded-2xl border-2 p-5 text-left transition-all duration-200
                     ${hookedChoice === opt.value
                       ? "border-accent bg-accent/10"
-                      : "border-line bg-ink-2 hover:border-violet-400/40 hover:-translate-y-0.5"}`}
+                      : "border-line bg-ink-2 hover:border-line-2 hover:-translate-y-0.5"}`}
                 >
                   <div className="font-bold text-base mb-1">{opt.label}</div>
                   <div className="text-xs text-paper-2">{opt.desc}</div>

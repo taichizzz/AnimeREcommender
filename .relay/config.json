@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "handoff": {
+    "maxCharacters": 24000,
+    "maxChangedFiles": 100,
+    "maxErrorLines": 200,
+    "includeFullDiff": false
+  },
+  "checkpoint": {
+    "maxPatchBytes": 1000000,
+    "maxTestOutputBytes": 200000,
+    "maxCount": 20
+  },
+  "tests": {
+    "timeoutSeconds": 600,
+    "captureOutput": true,
+    "maxStoredOutputBytes": 200000
+  }
+}

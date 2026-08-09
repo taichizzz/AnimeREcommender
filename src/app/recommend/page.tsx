@@ -328,7 +328,7 @@ export default function RecommendPage() {
 
         {/* Mode toggle — only shown when logged in */}
         {isLoggedIn && (
-          <div className="relative flex p-1 bg-ink-2 rounded-md border border-line mb-8 overflow-hidden">
+          <div className="glass relative flex p-1 bg-ink-2 rounded-2xl border border-line mb-8 overflow-hidden">
             <div
               className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded
                 bg-accent transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
@@ -356,7 +356,7 @@ export default function RecommendPage() {
 
         {/* ── MAL LIST MODE ───────────────────────────────────────────── */}
         {mode === "mylist" && !quizOpen && (
-          <div key="mylist" className="liquid-appear mb-8 rounded-lg border border-accent/20 bg-accent/5 p-6">
+          <div key="mylist" className="glass liquid-appear mb-8 rounded-2xl border border-line bg-ink-2 p-6">
             <h2 className="font-bold text-paper text-lg mb-1">Recommendations from your list</h2>
             <p className="text-paper-2 text-sm mb-6">
               We&apos;ll use your 5 highest-rated completed anime as seeds, then ask a few quick questions to dial it in.
@@ -385,7 +385,8 @@ export default function RecommendPage() {
               disabled={recLoading}
               className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
                 bg-accent text-accent-ink hover:brightness-110
-                disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                disabled:bg-white/[0.06] disabled:text-paper-3 disabled:cursor-not-allowed
+                disabled:hover:brightness-100 active:scale-[0.98]"
             >
               {recLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -418,7 +419,7 @@ export default function RecommendPage() {
         {/* ── MANUAL MODE ─────────────────────────────────────────────── */}
         {mode === "manual" && !quizOpen && recs.length === 0 && (
           <div key="manual" className="liquid-appear">
-            <div className="mb-8 rounded-lg border border-line bg-ink-2  p-5">
+            <div className="glass mb-8 rounded-2xl border border-line bg-ink-2 p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-paper-2">Your picks</h2>
@@ -455,7 +456,8 @@ export default function RecommendPage() {
               <button onClick={startManualQuiz} disabled={selected.length === 0 || recLoading}
                 className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200
                   bg-accent text-accent-ink hover:brightness-110
-                                    disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.98]">
+                  disabled:bg-white/[0.06] disabled:text-paper-3 disabled:cursor-not-allowed
+                  disabled:hover:brightness-100 active:scale-[0.98]">
                 {selected.length === 0
                   ? "Pick at least one anime to continue"
                   : "Continue → 4 quick questions"}
@@ -477,9 +479,9 @@ export default function RecommendPage() {
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
                 placeholder="Search anime to add — try Naruto, Attack on Titan, Frieren…"
-                className="w-full bg-ink-2 border-2 border-accent/40 rounded-xl pl-12 pr-4 py-4 text-base
-                  placeholder:text-paper-2                   focus:outline-none focus:border-accent/80 focus:bg-ink-3
-                  focus:ring-4 focus:ring-accent/20 transition-all duration-200"
+                className="glass w-full bg-ink-2 border border-line-2 rounded-2xl pl-12 pr-4 py-4 text-base
+                  placeholder:text-paper-3 focus:outline-none focus:border-paper/60 focus:bg-ink-3
+                  focus:ring-4 focus:ring-white/10 transition-all duration-200"
               />
               {loading && (
                 <span className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -491,7 +493,7 @@ export default function RecommendPage() {
               {showDropdown && query.trim().length > 0 && results.length > 0 && (
                 <div
                   className="absolute left-0 right-0 top-full mt-2 z-50 max-h-[420px] overflow-y-auto
-                    rounded-xl border border-line bg-ink-2                     shadow-2xl shadow-black/50 liquid-appear
+                    glass rounded-2xl border border-line bg-[#1c1c1c]/95 liquid-appear
                     [scrollbar-width:thin] [scrollbar-color:rgba(70,192,106,0.4)_transparent]"
                 >
                   {results.slice(0, 10).map((a, i) => {
@@ -560,7 +562,7 @@ export default function RecommendPage() {
             {/* Toolbar — shown only in manual mode where picks editing makes sense.
                 MAL List mode already has a "Try a different mood →" button in its own panel. */}
             {mode === "manual" && (
-              <div className="liquid-appear mb-8 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-ink-2  px-5 py-4">
+              <div className="glass liquid-appear mb-8 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-ink-2 px-5 py-4">
                 <span className="text-xs uppercase tracking-widest text-paper-3">Based on</span>
                 <div className="flex gap-2 flex-wrap flex-1 min-w-0">
                   {selected.map((a) => (
@@ -604,9 +606,9 @@ export default function RecommendPage() {
             </div>
 
             {thinking && (
-              <details className="mb-6 rounded-lg border border-accent/20 bg-accent/5  overflow-hidden card-appear">
-                <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-3 hover:bg-accent/10 transition-colors duration-200">
-                  <span className="text-sm font-semibold text-accent">How Animer thought about your taste</span>
+              <details className="glass mb-6 rounded-2xl border border-line bg-ink-2 overflow-hidden card-appear">
+                <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-3 hover:bg-white/5 transition-colors duration-200">
+                  <span className="text-sm font-semibold text-paper">How Animer read your taste</span>
                   <span className="ml-auto text-xs text-paper-3">click to expand</span>
                 </summary>
                 <div className="px-5 pb-5 pt-0">
@@ -621,11 +623,10 @@ export default function RecommendPage() {
 
                 return (
                   <div key={r.id}
-                    className={`card-appear rounded-lg border bg-ink-2 p-4
-                      transition-all duration-300 cursor-pointer
+                    className={`glass card-appear rounded-2xl border bg-ink-2 p-4 cursor-pointer
                       ${expanded
-                        ? "border-accent/40 bg-accent/[0.04] shadow-lg shadow-accent/10"
-                        : "border-line hover:border-line-2 hover:bg-ink-2 hover:shadow-lg hover:shadow-black/30 hover:-translate-y-0.5"}`}
+                        ? "border-line-2 bg-ink-3"
+                        : "glass-hover border-line hover:border-line-2"}`}
                     style={{ animationDelay: `${i * 80}ms` }}
                     onClick={() => toggleExpand(r.id)}
                   >

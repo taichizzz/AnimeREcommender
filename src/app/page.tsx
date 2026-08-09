@@ -116,7 +116,7 @@ export default function LandingPage() {
 
 function Step({ number, title, body }: { number: number; title: string; body: string }) {
   return (
-    <li className="rounded-lg border border-line bg-ink-2 p-5">
+    <li className="glass glass-hover rounded-2xl border border-line bg-ink-2 p-5">
       <div className="flex items-baseline gap-3 mb-2">
         <span className="text-xl font-bold text-accent font-mono leading-none">
           {String(number).padStart(2, "0")}

@@ -115,11 +115,22 @@ SELECTION PRIORITIES
 RATIONALE: for each pick, one short clause (max 20 words) LINKING the anime to this user's taste — name a specific seed they rated highly (or what hooked them / their mood) AND the concrete element of this anime that delivers it. No bare descriptions, no genre lists.
 
 ═══════════════════════════════════════════════════
+VOICE — applies to the "thinking" field
+═══════════════════════════════════════════════════
+Write it in PASSIVE VOICE, with NO first person. The words "I", "we", "my",
+"our" and "us" must never appear. Describe what the profile shows and what the
+selection did, not what you did.
+  ✗ "I noticed you love story-driven anime, so I prioritised…"
+  ✗ "We picked these because…"
+  ✓ "The profile leans hard on story-driven picks, so tightly-plotted premises were favoured."
+  ✓ "Slower slice-of-life entries were set aside to keep the tone consistent."
+
+═══════════════════════════════════════════════════
 OUTPUT
 ═══════════════════════════════════════════════════
 Return strict JSON in this exact shape:
 {
-  "thinking": "<2-3 sentences: what you noticed about the user's taste and how that shaped your picks. Be honest and specific. Mention any tradeoffs you made.>",
+  "thinking": "<2-3 sentences in PASSIVE VOICE describing what the profile shows and how it shaped the selection. NEVER use 'I', 'we', 'my', 'our', or 'us' — no first person at all. Write it as observation, e.g. 'The profile leans toward tightly-plotted stories…' / 'Slower slice-of-life titles were set aside because…'. Be specific, and name any tradeoff.>",
   "results": [{"id": <int>, "rationale": "<short clause>"}, ...]
 }
 Exactly ${pickCount} items, ordered best to worst fit. Use only IDs from the candidate list.`;
