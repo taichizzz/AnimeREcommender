@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { HeartbeatWithLabel } from "@/components/Heartbeat";
 
 export type QuizPick = {
   id: number;
@@ -43,24 +44,30 @@ export function RecommendQuiz({
   onComplete,
   onCancel,
   loading,
+  askFavorite = false,
 }: {
   picks: QuizPick[];
   onComplete: (q: QuizResult) => void;
   onCancel: () => void;
   loading?: boolean;
+  /** Show the "which is your favourite?" wheel first. Used when the seeds come
+   *  from a MAL list, where the user hasn't hand-picked them and there are many
+   *  to choose between. When picking manually, the first pick is the favourite. */
+  askFavorite?: boolean;
 }) {
-  // With only one pick, skip the "pick favorite" step entirely.
-  const skipFavStep = picks.length <= 1;
-  const initialStep = skipFavStep ? 1 : 0;
+  // With a favourite step, the quiz is four screens; without it, three.
+  const showFavStep = askFavorite && picks.length > 1;
+  const initialStep = showFavStep ? 0 : 1;
 
   const [step, setStep] = useState(initialStep);
-  const [favoriteId, setFavoriteId] = useState<number | null>(picks[0]?.id ?? null);
+  const [pickedFavoriteId, setPickedFavoriteId] = useState<number | null>(picks[0]?.id ?? null);
+  const favoriteId = showFavStep ? pickedFavoriteId : picks[0]?.id ?? null;
   const [hookedChoice, setHookedChoice] = useState<string>("");
   const [hookedText, setHookedText] = useState<string>("");
   const [mood, setMood] = useState<Set<string>>(new Set());
   const [dislikes, setDislikes] = useState<Set<string>>(new Set());
 
-  const totalSteps = skipFavStep ? 3 : 4;
+  const totalSteps = showFavStep ? 4 : 3;
   // The "visible" step number (1-indexed) for the progress dots + labels.
   const visibleStep = step - initialStep;
 
@@ -107,6 +114,19 @@ export function RecommendQuiz({
 
   const favorite = picks.find((p) => p.id === favoriteId);
 
+  // While the pipeline runs (retrieval, then two LLM passes) the quiz stays
+  // mounted, so the waiting state has to live here rather than on the page.
+  if (loading) {
+    return (
+      <div className="glass rounded-2xl border border-line bg-ink-2 p-6 mb-8">
+        <HeartbeatWithLabel text="Finding your matches" />
+        <p className="text-center text-xs text-paper-3 -mt-6 pb-4">
+          Reading your taste and preferences. This takes a few seconds.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="glass rounded-2xl border border-line bg-ink-2 p-6 mb-8">
       {/* Progress dots */}
@@ -124,16 +144,16 @@ export function RecommendQuiz({
         ))}
       </div>
 
-      {/* Step content — keyed for liquid-appear animation on each transition */}
+      {/* Step content, keyed for liquid-appear animation on each transition */}
       <div key={step} className="liquid-appear">
-        {/* ── Step 0: pick favorite ───────────────────────────── */}
+        {/* ── Step 0: pick favourite (MAL list mode only) ─────── */}
         {step === 0 && (
           <>
             <p className="text-xs uppercase tracking-widest text-paper-3 mb-2">Step {visibleStep + 1} of {totalSteps}</p>
             <h2 className="text-2xl font-extrabold mb-6 leading-tight">
               Which is your <span className="text-accent">absolute favorite</span>?
             </h2>
-            <FavoriteWheel picks={picks} favoriteId={favoriteId} onSelect={setFavoriteId} />
+            <FavoriteWheel picks={picks} favoriteId={favoriteId} onSelect={setPickedFavoriteId} />
           </>
         )}
 
@@ -183,7 +203,7 @@ export function RecommendQuiz({
             <h2 className="text-2xl font-extrabold mb-2 leading-tight">
               What are you in the <span className="text-accent">mood for</span>?
             </h2>
-            <p className="text-sm text-paper-2 mb-6">Pick any that apply — or none.</p>
+            <p className="text-sm text-paper-2 mb-6">Optional</p>
             <div className="flex flex-wrap gap-2">
               {MOOD_OPTIONS.map((m) => (
                 <button
@@ -208,7 +228,7 @@ export function RecommendQuiz({
             <h2 className="text-2xl font-extrabold mb-2 leading-tight">
               Anything you <span className="text-danger">don&apos;t want</span>?
             </h2>
-            <p className="text-sm text-paper-2 mb-6">Optional — skip if nothing comes to mind.</p>
+            <p className="text-sm text-paper-2 mb-6">Optional</p>
             <div className="flex flex-wrap gap-2">
               {DISLIKE_OPTIONS.map((d) => (
                 <button
@@ -235,7 +255,7 @@ export function RecommendQuiz({
           className="px-4 py-2.5 rounded-xl text-sm font-semibold text-paper-2 border border-line
             hover:text-paper hover:border-line-2 transition-all duration-200 disabled:opacity-30"
         >
-          {step === 0 ? "← Back to picks" : "← Back"}
+          {step === initialStep ? "Back to picks" : "Back"}
         </button>
 
         <button
@@ -246,16 +266,7 @@ export function RecommendQuiz({
             transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed
             active:scale-[0.98]"
         >
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <span className="w-4 h-4 border-2 border-line-2 border-t-white rounded-full animate-spin" />
-              Finding your matches…
-            </span>
-          ) : step === 3 ? (
-            "Get my recommendations →"
-          ) : (
-            "Continue →"
-          )}
+          {step === 3 ? "Get my recommendations" : "Continue"}
         </button>
       </div>
     </div>

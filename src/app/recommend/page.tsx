@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { Footer } from "@/components/Footer";
 import { RecommendQuiz, type QuizResult } from "@/components/RecommendQuiz";
 import { RecommendationsLoadingList } from "@/components/Skeletons";
+import { Heartbeat, HeartbeatWithLabel } from "@/components/Heartbeat";
 
 type SearchItem = {
   id: number;
@@ -311,19 +313,25 @@ export default function RecommendPage() {
               ANIMER<span className="text-accent">.</span>
             </h1>
           </Link>
-          {isLoggedIn ? (
-            <Link href="/dashboard"
-              className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
-              My dashboard
+          <div className="flex items-center gap-5">
+            <Link href="/about"
+              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              About
             </Link>
-          ) : (
-            <a href="/api/auth/login"
-              className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
-              Login with MAL
-            </a>
-          )}
+            {isLoggedIn ? (
+              <Link href="/dashboard"
+                className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200">
+                My Dashboard
+              </Link>
+            ) : (
+              <a href="/api/auth/login"
+                className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200">
+                Login with MAL
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Mode toggle — only shown when logged in */}
@@ -359,7 +367,7 @@ export default function RecommendPage() {
           <div key="mylist" className="glass liquid-appear mb-8 rounded-2xl border border-line bg-ink-2 p-6">
             <h2 className="font-bold text-paper text-lg mb-1">Recommendations from your list</h2>
             <p className="text-paper-2 text-sm mb-6">
-              We&apos;ll use your 5 highest-rated completed anime as seeds, then ask a few quick questions to dial it in.
+              We&apos;ll use your 15 highest-rated completed anime as seeds, then ask a few quick questions to dial it in.
             </p>
 
             {seeds.length > 0 && (
@@ -388,12 +396,9 @@ export default function RecommendPage() {
                 disabled:bg-white/[0.06] disabled:text-paper-3 disabled:cursor-not-allowed
                 disabled:hover:brightness-100 active:scale-[0.98]"
             >
-              {recLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Loading your list…
-                </span>
-              ) : recs.length > 0 ? "Try a different mood →" : "Start →"}
+              {recLoading
+                ? "Loading your list…"
+                : recs.length > 0 ? "Try a different mood" : "Start"}
             </button>
           </div>
         )}
@@ -405,6 +410,7 @@ export default function RecommendPage() {
             onComplete={(q) => handleListRecommend(q)}
             onCancel={() => setQuizOpen(false)}
             loading={recLoading}
+            askFavorite
           />
         )}
         {quizOpen && mode === "manual" && selected.length > 0 && (
@@ -460,7 +466,7 @@ export default function RecommendPage() {
                   disabled:hover:brightness-100 active:scale-[0.98]">
                 {selected.length === 0
                   ? "Pick at least one anime to continue"
-                  : "Continue → 4 quick questions"}
+                  : "Continue to 3 quick questions"}
               </button>
             </div>
 
@@ -485,7 +491,7 @@ export default function RecommendPage() {
               />
               {loading && (
                 <span className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin block" />
+                  <Heartbeat className="text-paper-2 scale-75 origin-right" label="Searching" />
                 </span>
               )}
 
@@ -528,8 +534,9 @@ export default function RecommendPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-paper truncate">{a.title}</div>
-                          <div className="text-xs text-paper-3">
-                            {a.year ?? "?"} · ⭐ {a.score ?? "?"}
+                          <div className="flex items-center gap-2 text-xs text-paper-3">
+                            <span>{a.year ?? "?"}</span>
+                            <Rating score={a.score} compact />
                           </div>
                         </div>
                         <span className={`flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-md
@@ -555,7 +562,12 @@ export default function RecommendPage() {
           </div>
         )}
 
-        {recLoading && !quizOpen && <RecommendationsLoadingList />}
+        {recLoading && !quizOpen && (
+          <>
+            <HeartbeatWithLabel text="Reading your taste" />
+            <RecommendationsLoadingList />
+          </>
+        )}
 
         {recs.length > 0 && !recLoading && (
           <section className="mt-2">
@@ -584,7 +596,7 @@ export default function RecommendPage() {
                   className="text-xs font-semibold text-accent hover:text-paper border border-accent/40
                     hover:border-accent rounded-full px-3 py-1.5 transition-all duration-200"
                 >
-                  Try a different mood →
+                  Try a different mood
                 </button>
                 <button
                   onClick={() => {
@@ -659,9 +671,8 @@ export default function RecommendPage() {
                           ) : (
                             <h3 className="font-semibold text-paper">{r.title}</h3>
                           )}
-                          <span className="text-xs text-paper-3">
-                            {r.year ?? "?"} · ⭐ {r.score != null ? `${r.score}%` : "?"}
-                          </span>
+                          <span className="text-xs text-paper-3">{r.year ?? "?"}</span>
+                          <Rating score={r.score} />
                           {r.genres.slice(0, 3).map((g) => (
                             <span key={g} className="text-[10px] uppercase tracking-wide text-paper-3 bg-ink-2 border border-line rounded px-1.5 py-0.5">
                               {g}
@@ -695,7 +706,7 @@ export default function RecommendPage() {
                                 ? "border-accent/60 bg-accent/15 text-accent"
                                 : "border-line text-paper-2 hover:border-accent/40 hover:text-accent"}`}
                           >
-                            ↑ Like
+                            Like
                           </button>
                           <button
                             onClick={() => sendFeedback(r, "down")}
@@ -706,7 +717,7 @@ export default function RecommendPage() {
                                 ? "border-danger-line bg-danger/15 text-danger"
                                 : "border-line text-paper-2 hover:border-danger-line hover:text-danger"}`}
                           >
-                            ↓ Dislike
+                            Dislike
                           </button>
                           <button
                             onClick={() => sendFeedback(r, "not_interested")}
@@ -745,7 +756,7 @@ export default function RecommendPage() {
                               bg-accent hover:brightness-110
                               rounded-md px-5 py-3 transition-all duration-200 active:scale-[0.98]"
                           >
-                            View on MyAnimeList ↗
+                            View on MyAnimeList
                           </a>
                         )}
                       </div>
@@ -758,6 +769,34 @@ export default function RecommendPage() {
         )}
 
       </main>
+      <Footer />
     </div>
+  );
+}
+
+/**
+ * Community rating, sourced from MyAnimeList. The label is explicit rather than
+ * a star icon, so it's clear whose score this is (not yours, not AniList's) and
+ * that it sits on MAL's familiar 0-10 scale.
+ */
+function Rating({ score, compact = false }: { score: number | null; compact?: boolean }) {
+  if (score == null) return null;
+
+  if (compact) {
+    return (
+      <span className="inline-flex items-baseline gap-1">
+        <span className="text-[10px] uppercase tracking-wider text-paper-3 font-mono">mal</span>
+        <span className="text-paper-2 tabular-nums">{score.toFixed(2)}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-baseline gap-1.5 rounded-md border border-line bg-ink-3 px-2 py-0.5">
+      <span className="text-[10px] uppercase tracking-wider text-paper-3 font-mono">mal</span>
+      <span className="text-sm font-semibold text-paper tabular-nums leading-none">
+        {score.toFixed(2)}
+      </span>
+    </span>
   );
 }

@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "id": "2026-07-13T07-43-50-213Z-001",
-  "createdAt": "2026-07-13T07:43:50.213Z",
-  "label": "Switch to codex",
-  "commit": "ebbc5553bee17fdb47f760bbedcf52b275932dae",
-  "branch": "main",
-  "patchTruncated": false
-}

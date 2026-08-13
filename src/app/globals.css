@@ -3,6 +3,9 @@
 :root {
   --background: #171717;
   --foreground: #ffffff;
+  /* Keeps OS-drawn chrome (select popups, scrollbars, focus rings) dark —
+     without it they render light and break the dark canvas. */
+  color-scheme: dark;
 }
 
 @theme inline {

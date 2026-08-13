@@ -9,7 +9,9 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const fields = "list_status{score},mean,genres,num_episodes,main_picture";
+  // updated_at powers the "recently updated" sort — MAL exposes no "date added",
+  // so this (when the entry last changed) is the closest signal available.
+  const fields = "list_status{score,updated_at},mean,genres,num_episodes,main_picture";
   const allAnime = [];
 
   // MAL caps each page at 100 — keep fetching until there is no next page

@@ -19,8 +19,8 @@ export function OnboardingHero({ isLoggedIn }: { isLoggedIn: boolean }) {
           Find anime <span className="bg-gradient-to-r from-violet-300 via-purple-200 to-pink-300 bg-clip-text text-transparent">you&apos;ll actually love</span>
         </h2>
         <p className="text-slate-400 text-base md:text-lg mb-8 max-w-2xl">
-          Not a popularity ranker. Animer learns from how 233,000 real viewers co-rate things,
-          then runs your picks through a language model that explains every match in your terms.
+          Animer learns from how 233,000 real viewers co-rate things,
+          then explains every match in your terms.
         </p>
 
         {/* 3-step rail */}
@@ -42,7 +42,7 @@ export function OnboardingHero({ isLoggedIn }: { isLoggedIn: boolean }) {
           <Step
             number={3}
             title="See matches with reasoning"
-            body="Each pick gets a personal one-liner explaining why it fits you."
+            body="Each pick gets a reason explaining why it fits you."
           />
         </ol>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Footer } from "@/components/Footer";
 
 export default function LandingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,7 +16,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-ink text-paper">
-      <main className="max-w-4xl mx-auto px-6 py-12 min-h-screen flex flex-col">
+      <main className="max-w-4xl mx-auto px-6 py-12">
 
         {/* Top nav */}
         <div className="flex items-center justify-between mb-12">
@@ -23,37 +24,41 @@ export default function LandingPage() {
             ANIMER<span className="text-accent">.</span>
           </h1>
 
-          {isLoggedIn ? (
-            <Link href="/dashboard"
-              className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
-              My dashboard
+          <div className="flex items-center gap-5">
+            <Link href="/about"
+              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              About
             </Link>
-          ) : (
-            <a href="/api/auth/login"
-              className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
-              Login with MAL
-            </a>
-          )}
+            {isLoggedIn ? (
+              <Link href="/dashboard"
+                className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200">
+                My Dashboard
+              </Link>
+            ) : (
+              <a href="/api/auth/login"
+                className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200">
+                Login with MAL
+              </a>
+            )}
+          </div>
         </div>
 
-        {/* Hero — vertically centered in the remaining space */}
-        <div className="flex-1 flex flex-col justify-center liquid-appear">
+        {/* Hero */}
+        <div className="liquid-appear">
 
           <p className="text-xs uppercase tracking-[0.3em] text-accent font-mono mb-5">
             A taste-aware recommender
           </p>
 
-          <h2 className="text-5xl md:text-6xl font-extrabold leading-[1.05] mb-6 tracking-tight">
+          <h2 className="text-3xl md:text-5xl font-extrabold leading-[1.1] mb-6 tracking-tight whitespace-nowrap">
             Find anime you&rsquo;ll{" "}
             <span className="text-accent">actually love.</span>
           </h2>
 
           <p className="text-paper-2 text-lg md:text-xl mb-10 max-w-2xl leading-relaxed">
-            Not a popularity ranker. Animer learns from how thousands of real viewers co-rate
-            things, then runs your picks through a language model that explains every match in
-            your terms.
+            Animer learns from how thousands of real viewers co-rate anime, then chooses the best matches for you.
           </p>
 
           {/* 3-step rail */}
@@ -74,8 +79,8 @@ export default function LandingPage() {
             />
             <Step
               number={3}
-              title="See matches with reasoning"
-              body="Each pick gets a personal one-liner explaining why it fits you."
+              title="See matches"
+              body="Each pick gets a reason explaining why it fits you."
             />
           </ol>
 
@@ -86,7 +91,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-2 bg-accent text-accent-ink font-bold text-base
                 px-7 py-3.5 rounded-md hover:brightness-110 transition-all duration-200 active:scale-[0.98]"
             >
-              Get started <span aria-hidden="true">→</span>
+              Get started
             </Link>
 
             {!isLoggedIn && (
@@ -99,17 +104,10 @@ export default function LandingPage() {
               </p>
             )}
           </div>
-
-          {/* Differentiators */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-paper-3 mt-8 pt-8 border-t border-line">
-            <Diff text="Collaborative filtering on millions of ratings" />
-            <Diff text="Synopsis-aware fallback for niche picks" />
-            <Diff text="Filters watched, sequels, dislikes" />
-            <Diff text="No popularity bias" />
-          </div>
         </div>
 
       </main>
+      <Footer />
     </div>
   );
 }
@@ -125,14 +123,5 @@ function Step({ number, title, body }: { number: number; title: string; body: st
       </div>
       <p className="text-sm text-paper-2 leading-relaxed">{body}</p>
     </li>
-  );
-}
-
-function Diff({ text }: { text: string }) {
-  return (
-    <span className="flex items-center gap-2">
-      <span className="w-1 h-1 rounded-full bg-accent" />
-      {text}
-    </span>
   );
 }

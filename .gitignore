@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.relay/
+design-system/
+# tooling artifacts (local only)
+.relay/
+design-system/

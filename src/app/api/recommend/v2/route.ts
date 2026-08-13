@@ -6,6 +6,7 @@ import {
   type AnimeMatch,
 } from "@/lib/supabase";
 import { rerankWithReasons, type CandidateSummary, type QuizSignals } from "@/lib/groq";
+import { getMalScores } from "@/lib/malScore";
 
 // POST body:
 //   { likedAnimeIds: number[],          // MAL IDs of seeds
@@ -300,12 +301,21 @@ export async function POST(request: Request) {
       }
     }
 
+    // MAL community scores for the final picks, cached in our table after the
+    // first lookup. Falls back to AniList's 0-100 rescaled if MAL has none.
+    const malScores = await getMalScores(
+      finalResults.map((m) => m.mal_id).filter((id): id is number => id != null)
+    );
+
     const results = finalResults.map((m) => ({
       id: m.id,
       malId: m.mal_id,
       title: m.title_english ?? m.title,
       imageUrl: m.cover_url,
-      score: m.avg_score,
+      // 0-10, matching what people read on MyAnimeList.
+      score:
+        (m.mal_id != null ? malScores.get(m.mal_id) : undefined) ??
+        (m.avg_score != null ? m.avg_score / 10 : null),
       year: m.year,
       synopsis: m.synopsis,
       genres: m.genres ?? [],

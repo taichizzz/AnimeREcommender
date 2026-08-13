@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Footer } from "@/components/Footer";
+import { Heartbeat } from "@/components/Heartbeat";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label, Sector,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -39,7 +41,24 @@ type AnimeEntry = {
     num_episodes?: number;
     genres?: { id: number; name: string }[];
   };
-  list_status: { score: number; status: string };
+  list_status: { score: number; status: string; updated_at?: string };
+};
+
+type SortField = "score" | "title" | "modified";
+type SortDir = "asc" | "desc";
+
+const SORT_FIELDS: { key: SortField; label: string }[] = [
+  { key: "score", label: "Score" },
+  { key: "title", label: "Alphabetical" },
+  { key: "modified", label: "Latest modified" },
+];
+
+// Direction reads differently per field, so spell it out rather than using a
+// generic ascending/descending arrow.
+const DIR_LABELS: Record<SortField, Record<SortDir, string>> = {
+  score:    { desc: "High to Low",  asc: "Low to High" },
+  title:    { desc: "Z to A",       asc: "A to Z" },
+  modified: { desc: "Newest First", asc: "Oldest First" },
 };
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
@@ -202,6 +221,22 @@ export default function DashboardPage() {
   const PAGE_SIZE = 50;
   const [page, setPage] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("score");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Changing the sort reshuffles everything, so page 3 of the old order is
+  // meaningless in the new one — go back to the start.
+  function changeField(field: SortField) {
+    setSortField(field);
+    // Text is naturally read A to Z; scores and dates are most useful highest first.
+    setSortDir(field === "title" ? "asc" : "desc");
+    setPage(0);
+  }
+
+  function toggleDir() {
+    setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    setPage(0);
+  }
 
   function goToPage(n: number) {
     setTransitioning(true);
@@ -300,8 +335,34 @@ export default function DashboardPage() {
     [genreData]
   );
 
-  const totalPages = Math.ceil(anime.length / PAGE_SIZE);
-  const pagedAnime = anime.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  // Sorted view of the list. Ties fall back to title so the order is stable
+  // rather than shuffling between renders.
+  const sortedAnime = useMemo(() => {
+    const byTitle = (a: AnimeEntry, b: AnimeEntry) =>
+      a.node.title.localeCompare(b.node.title);
+    const arr = [...anime];
+    // Entries with no timestamp sort as oldest rather than jumping to the top.
+    const ts = (e: AnimeEntry) =>
+      e.list_status.updated_at ? Date.parse(e.list_status.updated_at) : 0;
+
+    // Primary comparison only, ascending. Kept separate from the tie-break so
+    // reversing the direction doesn't also reverse it — equal scores should
+    // still read A to Z whichever way the list is pointing.
+    const primary =
+      sortField === "title"
+        ? byTitle
+        : sortField === "modified"
+          ? (a: AnimeEntry, b: AnimeEntry) => ts(a) - ts(b)
+          : (a: AnimeEntry, b: AnimeEntry) => a.list_status.score - b.list_status.score;
+
+    return arr.sort((a, b) => {
+      const p = primary(a, b);
+      return (sortDir === "asc" ? p : -p) || byTitle(a, b);
+    });
+  }, [anime, sortField, sortDir]);
+
+  const totalPages = Math.ceil(sortedAnime.length / PAGE_SIZE);
+  const pagedAnime = sortedAnime.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   async function handleRecommendFromList() {
     const topIds = anime
@@ -315,7 +376,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-ink flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-accent/20 border-t-accent rounded-full animate-spin" />
+        <Heartbeat className="text-accent" label="Loading your list" />
       </div>
     );
   }
@@ -329,9 +390,15 @@ export default function DashboardPage() {
           <Link href="/" className="text-xl font-bold tracking-[0.18em] text-paper">
             ANIMER<span className="text-accent">.</span>
           </Link>
-          <a href="/api/auth/logout" className="text-sm text-paper-2 hover:text-red-400 transition-colors">
-            Log out
-          </a>
+          <div className="flex items-center gap-5">
+            <Link href="/about"
+              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              About
+            </Link>
+            <a href="/api/auth/logout" className="text-sm text-paper-2 hover:text-paper transition-colors">
+              Log Out
+            </a>
+          </div>
         </div>
 
         {/* Profile */}
@@ -499,12 +566,12 @@ export default function DashboardPage() {
             className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm
               bg-accent text-accent-ink hover:brightness-110
                             transition-all duration-200 active:scale-[0.97]">
-            Recommend →
+            Recommend
           </button>
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-4 mb-5">
           <div className="h-px flex-1 bg-line" />
           <h2 className="text-xs font-semibold uppercase tracking-widest text-paper-2">
             Completed ({anime.length})
@@ -512,26 +579,72 @@ export default function DashboardPage() {
           <div className="h-px flex-1 bg-line" />
         </div>
 
+        {/* Sort: what to order by, then which way round */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <label htmlFor="sort-field" className="text-xs uppercase tracking-widest text-paper-3 mr-1">
+            Sort
+          </label>
+
+          <div className="relative">
+            <select
+              id="sort-field"
+              value={sortField}
+              onChange={(e) => changeField(e.target.value as SortField)}
+              className="glass appearance-none cursor-pointer rounded-full border border-line bg-ink-2
+                py-1.5 pl-4 pr-9 text-xs text-paper
+                hover:border-line-2 focus:outline-none focus:border-paper/50 transition-colors duration-150"
+            >
+              {SORT_FIELDS.map((f) => (
+                <option key={f.key} value={f.key} className="bg-ink-2 text-paper">
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            {/* Chevron: the affordance that marks this as a menu */}
+            <svg
+              className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-paper-3"
+              width="10" height="10" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+
+          <button
+            onClick={toggleDir}
+            aria-label={`Change order, currently ${DIR_LABELS[sortField][sortDir]}`}
+            className="rounded-full border border-line bg-ink-2 px-3 py-1.5 text-xs text-paper-2
+              hover:border-line-2 hover:text-paper transition-colors duration-150"
+          >
+            {DIR_LABELS[sortField][sortDir]}
+          </button>
+        </div>
+
         {/* Anime grid */}
         <div key={page} className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 mb-8 ${transitioning ? "grid-exit" : ""}`}>
           {pagedAnime.map((entry, i) => (
             <div key={entry.node.id}
-              className="card-appear group rounded-lg border border-line bg-ink-2
+              className="card-appear group flex flex-col rounded-lg border border-line bg-ink-2
                 overflow-hidden transition-all duration-200
                 hover:-translate-y-1 hover:border-line-2 hover:shadow-lg hover:shadow-black/40"
               style={{ animationDelay: `${i * 25}ms` }}>
               {entry.node.main_picture ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={entry.node.main_picture.medium} alt={entry.node.title}
-                  className="w-full object-cover" style={{ height: "160px" }} />
+                  className="w-full object-cover flex-shrink-0" style={{ height: "160px" }} />
               ) : (
-                <div className="w-full bg-ink-3" style={{ height: "160px" }} />
+                <div className="w-full bg-ink-3 flex-shrink-0" style={{ height: "160px" }} />
               )}
-              <div className="p-3">
+              {/* Column so the badge can sit on the baseline of every card, no
+                  matter whether the title wraps to one line or two. */}
+              <div className="flex flex-1 flex-col p-3">
                 <p className="text-xs font-semibold text-paper line-clamp-2 leading-snug mb-2">
                   {entry.node.title}
                 </p>
-                <ScoreBadge score={entry.list_status.score} />
+                <div className="mt-auto pt-1">
+                  <ScoreBadge score={entry.list_status.score} />
+                </div>
               </div>
             </div>
           ))}
@@ -547,7 +660,7 @@ export default function DashboardPage() {
                 hover:bg-ink-3 hover:border-line-2 transition-all duration-200
                 disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              ← Prev
+              Prev
             </button>
 
             <div className="flex items-center gap-1">
@@ -573,12 +686,13 @@ export default function DashboardPage() {
                 hover:bg-ink-3 hover:border-line-2 transition-all duration-200
                 disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              Next →
+              Next
             </button>
           </div>
         )}
 
       </main>
+      <Footer width="max-w-5xl" />
     </div>
   );
 }

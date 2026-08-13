@@ -56,6 +56,7 @@ type AnimeSearchRow = {
   cover_url: string | null;
   year: number | null;
   avg_score: number | null;
+  mal_score: number | null;
 };
 
 const FETCH_LIMIT = 40; // over-fetch, then rank for relevance
@@ -86,7 +87,7 @@ async function searchSupabase(q: string): Promise<SearchResult[]> {
   const pattern = `%${escapeLike(q)}%`;
   const { data, error } = await supabase
     .from("anime")
-    .select("mal_id, title, title_english, synopsis, cover_url, year, avg_score")
+    .select("mal_id, title, title_english, synopsis, cover_url, year, avg_score, mal_score")
     .or(`title.ilike.${pattern},title_english.ilike.${pattern}`)
     .not("mal_id", "is", null)
     .order("avg_score", { ascending: false, nullsFirst: false })
@@ -103,8 +104,8 @@ async function searchSupabase(q: string): Promise<SearchResult[]> {
       title: a.title_english ?? a.title,
       synopsis: a.synopsis,
       imageUrl: a.cover_url,
-      // Stored 0-100; the UI shows the familiar 0-10 MAL scale.
-      score: a.avg_score != null ? Math.round(a.avg_score) / 10 : null,
+      // MAL's 0-10 mean where we have it, else AniList's 0-100 rescaled.
+      score: a.mal_score ?? (a.avg_score != null ? a.avg_score / 10 : null),
       year: a.year,
     }));
 }
