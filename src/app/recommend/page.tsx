@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
 import { RecommendQuiz, type QuizResult } from "@/components/RecommendQuiz";
 import { RecommendationsLoadingList } from "@/components/Skeletons";
 import { Heartbeat, HeartbeatWithLabel } from "@/components/Heartbeat";
+import { useIsLoggedIn } from "@/components/AuthProvider";
 
 type SearchItem = {
   id: number;
@@ -49,8 +51,14 @@ function getClientId(): string {
 }
 
 export default function RecommendPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [mode, setMode] = useState<"manual" | "mylist">("manual");
+  const isLoggedIn = useIsLoggedIn();
+
+  // The dashboard links here with ?mode=mylist. Honoured only when signed in,
+  // since the mode toggle itself is hidden otherwise.
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<"manual" | "mylist">(
+    searchParams.get("mode") === "mylist" && isLoggedIn ? "mylist" : "manual"
+  );
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchItem[]>([]);
@@ -75,13 +83,6 @@ export default function RecommendPage() {
   const recContextRef = useRef<{ seedIds: number[]; engine: string }>({ seedIds: [], engine: "" });
 
   const selectedIds = useMemo(() => new Set(selected.map((a) => a.id)), [selected]);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => setIsLoggedIn(!!d.user))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     setRecs([]);

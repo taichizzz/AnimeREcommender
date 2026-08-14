@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
+import { useIsLoggedIn } from "@/components/AuthProvider";
 
 export default function AboutPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((d) => setIsLoggedIn(!!d.user))
-      .catch(() => {});
-  }, []);
+  const isLoggedIn = useIsLoggedIn();
 
   return (
     <div className="min-h-screen bg-ink text-paper">

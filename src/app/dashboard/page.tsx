@@ -364,13 +364,11 @@ export default function DashboardPage() {
   const totalPages = Math.ceil(sortedAnime.length / PAGE_SIZE);
   const pagedAnime = sortedAnime.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  async function handleRecommendFromList() {
-    const topIds = anime
-      .filter((e) => e.list_status.score >= 8)
-      .slice(0, 3)
-      .map((e) => e.node.id);
-    if (topIds.length === 0) return;
-    router.push(`/?recommend=${topIds.join(",")}`);
+  // The recommend page's "From my MAL list" mode fetches the list server-side
+  // (via /api/recommend/fromlist), so the destination only needs to be told
+  // which mode to open in — no seed ids to carry across.
+  function handleRecommendFromList() {
+    router.push("/recommend?mode=mylist");
   }
 
   if (loading) {
