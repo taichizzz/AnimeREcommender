@@ -30,6 +30,9 @@
   --color-accent-ink: #171717;               /* text on white fills    */
   --color-danger: #ffffff;                   /* dislike — outline, not colour */
   --color-danger-line: rgba(255, 255, 255, 0.3);
+  /* The one warm mark outside the charts: the community-rating star. Same amber
+     the dashboard already uses for "Watching", so it's not a new colour. */
+  --color-star: #e8b661;
 
   /* Aliases kept so the atelier-styled screens keep resolving */
   --color-canvas: #171717;

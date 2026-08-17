@@ -776,28 +776,54 @@ export default function RecommendPage() {
 }
 
 /**
- * Community rating, sourced from MyAnimeList. The label is explicit rather than
- * a star icon, so it's clear whose score this is (not yours, not AniList's) and
- * that it sits on MAL's familiar 0-10 scale.
+ * Community rating from MyAnimeList.
+ *
+ * Box metrics mirror the genre pills beside it — 11px text on a 15px line box in
+ * a 4px chip — because the title row is baseline-aligned, so anything with a
+ * different line box rides visibly high. Two things that look optional but
+ * aren't: `text-[11px]` must sit on the chip, not just the number (otherwise the
+ * chip inherits the row's 16px strut and grows ~1.5px taller than its
+ * neighbours), and the star must be an inline SVG rather than a flex child (a
+ * flex container takes its baseline from its first item, and an SVG has none).
  */
 function Rating({ score, compact = false }: { score: number | null; compact?: boolean }) {
   if (score == null) return null;
 
+  const star = (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="inline-block mr-[3px] text-star"
+      style={{ verticalAlign: "-0.1em" }}
+      aria-hidden="true"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+
+  // The star replaces the old "MAL" label, so name the source for screen readers.
+  const label = <span className="sr-only">MyAnimeList score </span>;
+
   if (compact) {
     return (
-      <span className="inline-flex items-baseline gap-1">
-        <span className="text-[10px] uppercase tracking-wider text-paper-3 font-mono">mal</span>
-        <span className="text-paper-2 tabular-nums">{score.toFixed(2)}</span>
+      <span className="inline-block text-[11px] leading-[15px] whitespace-nowrap">
+        {star}
+        {label}
+        <span className="font-semibold tabular-nums text-paper-2">{score.toFixed(2)}</span>
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-baseline gap-1.5 rounded-md border border-line bg-ink-3 px-2 py-0.5">
-      <span className="text-[10px] uppercase tracking-wider text-paper-3 font-mono">mal</span>
-      <span className="text-sm font-semibold text-paper tabular-nums leading-none">
-        {score.toFixed(2)}
-      </span>
+    <span
+      className="inline-block text-[11px] leading-[15px] whitespace-nowrap
+        rounded border border-line bg-ink-2 px-1.5 py-0.5"
+    >
+      {star}
+      {label}
+      <span className="font-semibold tabular-nums text-paper">{score.toFixed(2)}</span>
     </span>
   );
 }
