@@ -338,8 +338,10 @@ export default function RecommendPage() {
         {/* Mode toggle — only shown when logged in */}
         {isLoggedIn && (
           <div className="glass relative flex p-1 bg-ink-2 rounded-2xl border border-line mb-8 overflow-hidden">
+            {/* rounded-xl (12px) = the container's 16px minus its 4px p-1 inset.
+                Concentric corners only look parallel when inner = outer − gap. */}
             <div
-              className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded
+              className="absolute top-1 bottom-1 w-[calc(50%-0.25rem)] rounded-xl
                 bg-accent transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{
                 transform: mode === "manual" ? "translateX(0)" : "translateX(100%)",
@@ -347,14 +349,14 @@ export default function RecommendPage() {
             />
             <button
               onClick={() => setMode("manual")}
-              className={`relative z-10 flex-1 py-2.5 rounded text-sm font-semibold transition-colors duration-300
+              className={`relative z-10 flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300
                 ${mode === "manual" ? "text-accent-ink" : "text-paper-2 hover:text-paper"}`}
             >
               Pick your own
             </button>
             <button
               onClick={() => setMode("mylist")}
-              className={`relative z-10 flex-1 py-2.5 rounded text-sm font-semibold transition-colors duration-300
+              className={`relative z-10 flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-300
                 ${mode === "mylist" ? "text-accent-ink" : "text-paper-2 hover:text-paper"}`}
             >
               From my MAL list
@@ -485,7 +487,7 @@ export default function RecommendPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => { if (results.length > 0) setShowDropdown(true); }}
-                placeholder="Search anime to add — try Naruto, Attack on Titan, Frieren…"
+                placeholder="Search anime to add- try Naruto, Attack on Titan, Frieren…"
                 className="glass w-full bg-ink-2 border border-line-2 rounded-2xl pl-12 pr-4 py-4 text-base
                   placeholder:text-paper-3 focus:outline-none focus:border-paper/60 focus:bg-ink-3
                   focus:ring-4 focus:ring-white/10 transition-all duration-200"
@@ -658,7 +660,11 @@ export default function RecommendPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                        {/* items-center, not items-baseline: the row mixes a 16px
+                            title with 11px metadata, and on a shared baseline the
+                            smaller items sit ~1.7px below the title's optical centre.
+                            Centring puts title, year, score and pills on one line. */}
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {r.malId != null ? (
                             <a
                               href={`https://myanimelist.net/anime/${r.malId}`}
@@ -778,25 +784,40 @@ export default function RecommendPage() {
 /**
  * Community rating from MyAnimeList.
  *
- * Box metrics mirror the genre pills beside it — 11px text on a 15px line box in
- * a 4px chip — because the title row is baseline-aligned, so anything with a
- * different line box rides visibly high. Two things that look optional but
- * aren't: `text-[11px]` must sit on the chip, not just the number (otherwise the
- * chip inherits the row's 16px strut and grows ~1.5px taller than its
- * neighbours), and the star must be an inline SVG rather than a flex child (a
- * flex container takes its baseline from its first item, and an SVG has none).
+ * Deliberately unboxed: the title row already carries boxed genre pills, and a
+ * second chip beside them made three competing containers in one line.
+ *
+ * The star is centred by `inline-flex` + `items-center`, not by a nudge. An
+ * earlier version used a computed `vertical-align`, which was only necessary
+ * while the containing row was `items-baseline` — a flex container takes its
+ * baseline from its first item, and an SVG has none, so flex would have made
+ * the whole chip ride high. That row is `items-center` now, so baselines aren't
+ * involved and flex centring is both correct and self-maintaining.
+ *
+ * `leading-none` on the wrapper and the number is load-bearing. Under the
+ * default 1.5 line-height the number's box is half again as tall as its glyphs
+ * and grows asymmetrically about them, so centring the boxes would not centre
+ * what you see. At line-height 1 the digits' ink measures 0.01px off its own
+ * box centre, so box centring and ink centring coincide and flex alone is
+ * enough — no `translate-y` or `vertical-align` correction is needed, and
+ * adding one moves the star off centre rather than onto it.
+ *
+ * Size is the only real lever, and it is bounded by overhang rather than by
+ * alignment: flex keeps the star centred at any size (residual grows only as
+ * s * 0.02, sub-pixel throughout), but the digits' ink is just 8.56px against
+ * the star's s * 0.7925. At 13px that overhangs 0.86px a side and reads as part
+ * of the line; by 18px it is 2.84px and visibly straddles the text.
  */
 function Rating({ score, compact = false }: { score: number | null; compact?: boolean }) {
   if (score == null) return null;
 
   const star = (
     <svg
-      width="11"
-      height="11"
+      width="13"
+      height="13"
       viewBox="0 0 24 24"
       fill="currentColor"
-      className="inline-block mr-[3px] text-star"
-      style={{ verticalAlign: "-0.1em" }}
+      className="shrink-0 text-star"
       aria-hidden="true"
     >
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -808,22 +829,19 @@ function Rating({ score, compact = false }: { score: number | null; compact?: bo
 
   if (compact) {
     return (
-      <span className="inline-block text-[11px] leading-[15px] whitespace-nowrap">
+      <span className="inline-flex items-center gap-[4px] text-[11px] leading-none whitespace-nowrap">
         {star}
         {label}
-        <span className="font-semibold tabular-nums text-paper-2">{score.toFixed(2)}</span>
+        <span className="font-semibold tabular-nums leading-none text-paper-2">{score.toFixed(2)}</span>
       </span>
     );
   }
 
   return (
-    <span
-      className="inline-block text-[11px] leading-[15px] whitespace-nowrap
-        rounded border border-line bg-ink-2 px-1.5 py-0.5"
-    >
+    <span className="inline-flex items-center gap-[4px] text-[11px] leading-none whitespace-nowrap">
       {star}
       {label}
-      <span className="font-semibold tabular-nums text-paper">{score.toFixed(2)}</span>
+      <span className="font-semibold tabular-nums leading-none text-paper">{score.toFixed(2)}</span>
     </span>
   );
 }
