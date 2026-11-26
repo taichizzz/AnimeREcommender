@@ -9,6 +9,7 @@ import { RecommendQuiz, type QuizResult } from "@/components/RecommendQuiz";
 import { RecommendationsLoadingList } from "@/components/Skeletons";
 import { Heartbeat, HeartbeatWithLabel } from "@/components/Heartbeat";
 import { useIsLoggedIn } from "@/components/AuthProvider";
+import { cleanSynopsis } from "@/lib/text";
 
 type SearchItem = {
   id: number;
@@ -586,40 +587,42 @@ export default function RecommendPage() {
             {/* Toolbar — shown only in manual mode where picks editing makes sense.
                 MAL List mode already has a "Try a different mood →" button in its own panel. */}
             {mode === "manual" && (
-              <div className="glass liquid-appear mb-8 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-ink-2 px-5 py-4">
-                <span className="text-xs uppercase tracking-widest text-paper-3">Based on</span>
-                <div className="flex gap-2 flex-wrap flex-1 min-w-0">
+              <div className="glass liquid-appear mb-8 flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-line bg-ink-2 px-4 sm:px-5 py-3.5 sm:py-4">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-1 min-w-0">
+                  <span className="text-xs uppercase tracking-widest text-paper-3 whitespace-nowrap">Based on</span>
                   {selected.map((a) => (
                     <span
                       key={a.id}
-                      className="text-xs font-medium text-accent bg-accent/15 border border-accent/30 rounded-full px-2.5 py-1 truncate max-w-[180px]"
+                      className="text-xs font-medium text-accent bg-accent/15 border border-accent/30 rounded-full px-2.5 py-1 truncate max-w-[240px]"
                     >
                       {a.title}
                     </span>
                   ))}
                 </div>
-                <button
-                  onClick={() => {
-                    // Reopen the quiz with same picks; reusing answers is fine
-                    setRecs([]);
-                    setThinking("");
-                    setQuizOpen(true);
-                  }}
-                  className="text-xs font-semibold text-accent hover:text-paper border border-accent/40
-                    hover:border-accent rounded-full px-3 py-1.5 transition-all duration-200"
-                >
-                  Try a different mood
-                </button>
-                <button
-                  onClick={() => {
-                    // Clear recs so the picks panel + search come back
-                    setRecs([]);
-                    setThinking("");
-                  }}
-                  className="text-xs text-paper-2 hover:text-paper transition-colors"
-                >
-                  Edit picks
-                </button>
+                <div className="flex items-center gap-3 sm:ml-auto shrink-0">
+                  <button
+                    onClick={() => {
+                      // Reopen the quiz with same picks; reusing answers is fine
+                      setRecs([]);
+                      setThinking("");
+                      setQuizOpen(true);
+                    }}
+                    className="whitespace-nowrap text-xs font-semibold text-accent hover:text-paper border border-accent/40
+                      hover:border-accent rounded-full px-3 py-1.5 transition-all duration-200"
+                  >
+                    Try a different mood
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Clear recs so the picks panel + search come back
+                      setRecs([]);
+                      setThinking("");
+                    }}
+                    className="whitespace-nowrap text-xs text-paper-2 hover:text-paper transition-colors"
+                  >
+                    Edit picks
+                  </button>
+                </div>
               </div>
             )}
 
@@ -631,9 +634,9 @@ export default function RecommendPage() {
 
             {thinking && (
               <details className="glass mb-6 rounded-2xl border border-line bg-ink-2 overflow-hidden card-appear">
-                <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-3 hover:bg-white/5 transition-colors duration-200">
+                <summary className="cursor-pointer select-none px-5 py-4 flex items-center gap-2 hover:bg-white/5 transition-colors duration-200">
                   <span className="text-sm font-semibold text-paper">How Animer read your taste</span>
-                  <span className="ml-auto text-xs text-paper-3">click to expand</span>
+                  <span className="ml-auto text-xs text-paper-3 whitespace-nowrap shrink-0">click to expand</span>
                 </summary>
                 <div className="px-5 pb-5 pt-0">
                   <p className="text-sm text-paper-2 leading-relaxed whitespace-pre-line">{thinking}</p>
@@ -655,7 +658,7 @@ export default function RecommendPage() {
                     onClick={() => toggleExpand(r.id)}
                   >
                     {/* Compact row — always visible */}
-                    <div className="flex gap-4">
+                    <div className={`flex gap-4 ${expanded ? "flex-col sm:flex-row items-center sm:items-start" : ""}`}>
                       <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
                         <span className="text-xs font-mono text-paper-3">#{i + 1}</span>
                         <CRTScreen
@@ -664,19 +667,19 @@ export default function RecommendPage() {
                           fixedHeight={expanded ? 240 : 88}
                           animateOnHover={!expanded}
                           playPowerOnOnMount={expanded}
-                          curvature={expanded ? 28 : 22}
+                          curvature={expanded ? 22 : 20}
                           clipToCurve
-                          aberration={expanded ? 34 : 24}
+                          aberration={expanded ? 20 : 16}
                           aberrationScheme={0}
                           scanlines={28}
                           scanlineSize={expanded ? 4 : 3}
-                          mask={expanded ? 32 : 30}
+                          mask={expanded ? 24 : 22}
                           maskPitch={expanded ? 6 : 4}
-                          vignette={expanded ? 50 : 45}
-                          noise={expanded ? 20 : 16}
+                          vignette={expanded ? 44 : 40}
+                          noise={expanded ? 16 : 14}
                           rollSpeed={expanded ? 4 : 3.5}
-                          flicker={expanded ? 48 : 35}
-                          jitter={expanded ? 2 : 0}
+                          flicker={expanded ? 34 : 28}
+                          jitter={expanded ? 1.5 : 0}
                           className={`rounded-lg transition-all duration-300 ${
                             expanded
                               ? "w-44 border border-line-2 shadow-xl shadow-black/40"
@@ -696,7 +699,7 @@ export default function RecommendPage() {
                           )}
                         </CRTScreen>
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className={`min-w-0 ${expanded ? "w-full sm:flex-1" : "flex-1"}`}>
                         {/* items-center, not items-baseline: the row mixes a 16px
                             title with 11px metadata, and on a shared baseline the
                             smaller items sit ~1.7px below the title's optical centre.
@@ -740,12 +743,12 @@ export default function RecommendPage() {
                         </div>
 
                         {/* Feedback — teaches the recommender (and seeds our own ratings data) */}
-                        <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => sendFeedback(r, "up")}
                             aria-pressed={feedback[r.id] === "up"}
                             title="More like this"
-                            className={`flex items-center gap-1 text-xs rounded-full border px-2.5 py-1 transition-all duration-150
+                            className={`whitespace-nowrap flex items-center gap-1 text-xs rounded-full border px-2.5 py-1 transition-all duration-150
                               ${feedback[r.id] === "up"
                                 ? "border-accent/60 bg-accent/15 text-accent"
                                 : "border-line text-paper-2 hover:border-accent/40 hover:text-accent"}`}
@@ -756,7 +759,7 @@ export default function RecommendPage() {
                             onClick={() => sendFeedback(r, "down")}
                             aria-pressed={feedback[r.id] === "down"}
                             title="Not my taste"
-                            className={`flex items-center gap-1 text-xs rounded-full border px-2.5 py-1 transition-all duration-150
+                            className={`whitespace-nowrap flex items-center gap-1 text-xs rounded-full border px-2.5 py-1 transition-all duration-150
                               ${feedback[r.id] === "down"
                                 ? "border-danger-line bg-danger/15 text-danger"
                                 : "border-line text-paper-2 hover:border-danger-line hover:text-danger"}`}
@@ -767,7 +770,7 @@ export default function RecommendPage() {
                             onClick={() => sendFeedback(r, "not_interested")}
                             aria-pressed={feedback[r.id] === "not_interested"}
                             title="Don't show me this kind"
-                            className={`text-xs rounded-full border px-2.5 py-1 transition-all duration-150
+                            className={`whitespace-nowrap text-xs rounded-full border px-2.5 py-1 transition-all duration-150
                               ${feedback[r.id] === "not_interested"
                                 ? "border-white/30 bg-ink-3 text-paper"
                                 : "border-line text-paper-3 hover:border-white/25 hover:text-paper-2"}`}
@@ -781,11 +784,11 @@ export default function RecommendPage() {
                     {/* Expanded section */}
                     {expanded && (
                       <div className="liquid-appear mt-5 pt-5 border-t border-line space-y-5">
-                        {r.synopsis && (
+                        {cleanSynopsis(r.synopsis) && (
                           <div>
                             <p className="text-[10px] uppercase tracking-widest text-paper-3 mb-2">Synopsis</p>
                             <p className="text-sm text-paper-2 leading-relaxed whitespace-pre-line">
-                              {r.synopsis}
+                              {cleanSynopsis(r.synopsis)}
                             </p>
                           </div>
                         )}
@@ -796,7 +799,7 @@ export default function RecommendPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-2 text-sm font-bold text-accent-ink
+                            className="inline-flex w-full sm:w-auto justify-center items-center gap-2 text-sm font-bold text-accent-ink
                               bg-accent hover:brightness-110
                               rounded-md px-5 py-3 transition-all duration-200 active:scale-[0.98]"
                           >

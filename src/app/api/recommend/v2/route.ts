@@ -8,6 +8,7 @@ import {
 } from "@/lib/supabase";
 import { rerankWithReasons, type CandidateSummary, type QuizSignals } from "@/lib/groq";
 import { getMalScores } from "@/lib/malScore";
+import { cleanSynopsis } from "@/lib/text";
 
 // POST body:
 //   { likedAnimeIds: number[],          // MAL IDs of seeds
@@ -288,7 +289,7 @@ export async function POST(request: Request) {
             year: m.year,
             genres: m.genres ?? [],
             top_tags: topTags,
-            synopsis_excerpt: (rich?.synopsis ?? m.synopsis ?? "").slice(0, 600),
+            synopsis_excerpt: (cleanSynopsis(rich?.synopsis ?? m.synopsis) ?? "").slice(0, 600),
             similarity: m.similarity,
             avg_score: m.avg_score,
           };
@@ -336,7 +337,7 @@ export async function POST(request: Request) {
         (m.mal_id != null ? malScores.get(m.mal_id) : undefined) ??
         (m.avg_score != null ? m.avg_score / 10 : null),
       year: m.year,
-      synopsis: m.synopsis,
+      synopsis: cleanSynopsis(m.synopsis),
       genres: m.genres ?? [],
       reason:
         reasons.get(m.id) ??
