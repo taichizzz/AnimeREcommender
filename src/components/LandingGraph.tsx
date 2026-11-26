@@ -83,14 +83,73 @@ const SECONDARY_WIRES: string[] = [
   "M 470 448 C 426 490, 404 452, 362 476",
 ];
 
-function slotPositionStyle(slot: SlotGeometry): React.CSSProperties {
+function slotPositionStyle(
+  slot: SlotGeometry,
+  stageW = STAGE_W,
+  stageH = STAGE_H
+): React.CSSProperties {
   return {
-    left: `${(slot.cx / STAGE_W) * 100}%`,
-    top: `${(slot.cy / STAGE_H) * 100}%`,
+    left: `${(slot.cx / stageW) * 100}%`,
+    top: `${(slot.cy / stageH) * 100}%`,
     width: `${slot.widthPct}%`,
     transform: "translate(-50%, -50%)",
   };
 }
+
+// Portrait-proportioned mobile knowledge graph (360 × 424) keeping the organic mesh intact.
+const MOBILE_STAGE_W = 360;
+const MOBILE_STAGE_H = 424;
+
+const MOBILE_HERO_SLOT: SlotGeometry = { cx: 180, cy: 186, widthPct: 48 };
+
+const MOBILE_SATELLITE_SLOTS: SlotGeometry[] = [
+  { cx: 64, cy: 48, widthPct: 27 },   // 1: Upper-left
+  { cx: 282, cy: 42, widthPct: 27 },  // 2: High upper-right
+  { cx: 60, cy: 318, widthPct: 27 },  // 3: Lower-left
+  { cx: 298, cy: 312, widthPct: 27 }, // 4: Lower-right
+  { cx: 182, cy: 378, widthPct: 27 }, // 5: Bottom-center
+];
+
+const MOBILE_PRIMARY_WIRES: WireSpec[] = [
+  {
+    slot: 1,
+    start: [130, 111],
+    end: [86, 89],
+    d: "M 130 111 C 116 94, 102 106, 86 89",
+  },
+  {
+    slot: 2,
+    start: [228, 111],
+    end: [264, 83],
+    d: "M 228 111 C 240 90, 256 102, 264 83",
+  },
+  {
+    slot: 3,
+    start: [122, 261],
+    end: [84, 277],
+    d: "M 122 261 C 108 274, 98 264, 84 277",
+  },
+  {
+    slot: 4,
+    start: [240, 261],
+    end: [274, 271],
+    d: "M 240 261 C 254 272, 260 258, 274 271",
+  },
+  {
+    slot: 5,
+    start: [180, 261],
+    end: [182, 337],
+    d: "M 180 261 C 170 296, 194 304, 182 337",
+  },
+];
+
+const MOBILE_SECONDARY_WIRES: string[] = [
+  "M 113 46 C 166 18, 192 66, 233 42",
+  "M 48 89 C 22 174, 44 204, 46 277",
+  "M 304 83 C 336 164, 314 198, 308 271",
+  "M 102 344 C 116 364, 122 356, 133 372",
+  "M 254 342 C 244 364, 238 358, 231 374",
+];
 
 function TvScreenArtwork({ node }: { node: LandingGraphNode }) {
   return (
@@ -340,52 +399,126 @@ export function LandingGraph({ nodes }: { nodes: LandingGraphNode[] }) {
         </div>
       </div>
 
-      {/* Dedicated mobile vertical CRT hero + 5-TV connected switcher strip */}
-      <div className="sm:hidden max-w-[360px] mx-auto select-none">
-        {/* Full-width Hero Horizontal 4:3 CRT TV */}
-        <div className="rounded-[16px] bg-gradient-to-b from-[#222226] to-[#0f0f12] p-[6px] border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-          <CRTScreen
-            key={heroNode.malId}
-            fixedWidth={264}
-            fixedHeight={198}
-            playPowerOnOnMount
-            curvature={22}
-            clipToCurve
-            aberration={18}
-            aberrationScheme={0}
-            scanlines={22}
-            scanlineSize={3}
-            mask={22}
-            maskPitch={5}
-            vignette={44}
-            noise={14}
-            rollSpeed={3.4}
-            flicker={30}
-            jitter={1}
-            className="w-full rounded-[10px] border border-black/60"
-            style={{ aspectRatio: "4 / 3" }}
+      {/* Dedicated portrait-proportioned mobile knowledge graph (360 × 424) */}
+      <div className="sm:hidden w-full select-none">
+        <div
+          className="relative w-full mx-auto"
+          style={{ aspectRatio: "360 / 424", maxWidth: "390px" }}
+        >
+          {/* Subtle neutral darkroom ambient halo behind the mobile hero CRT */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute rounded-full bg-white/[0.045] blur-3xl"
+            style={{
+              left: "50%",
+              top: "44%",
+              width: "60%",
+              height: "42%",
+              transform: "translate(-50%, -50%)",
+            }}
+          />
+
+          {/* Pure text-free curved Bezier knowledge graph wires */}
+          <svg
+            aria-hidden="true"
+            viewBox={`0 0 ${MOBILE_STAGE_W} ${MOBILE_STAGE_H}`}
+            className="pointer-events-none absolute inset-0 w-full h-full z-0"
           >
-            <TvScreenArtwork node={heroNode} />
-          </CRTScreen>
-          <div className="pt-1.5 pb-0.5 text-center truncate text-[10px] font-mono uppercase tracking-[0.2em] text-paper-3 leading-none">
-            {heroNode.shortTitle}
+            {MOBILE_SECONDARY_WIRES.map((d, idx) => (
+              <path
+                key={idx}
+                d={d}
+                fill="none"
+                stroke="rgba(255,255,255,0.18)"
+                strokeWidth={1}
+                strokeDasharray="2 4"
+              />
+            ))}
+
+            {MOBILE_PRIMARY_WIRES.map((wire) => {
+              const isHighlighted = wire.slot === 1;
+              const strokeColor = isHighlighted
+                ? "rgba(255,255,255,0.72)"
+                : "rgba(255,255,255,0.34)";
+
+              return (
+                <g key={wire.slot}>
+                  <path
+                    d={wire.d}
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth={isHighlighted ? 1.5 : 1.15}
+                    className="transition-all duration-300"
+                  />
+                  <circle
+                    cx={wire.start[0]}
+                    cy={wire.start[1]}
+                    r={isHighlighted ? 2.4 : 1.8}
+                    fill={isHighlighted ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.45)"}
+                  />
+                  <circle
+                    cx={wire.end[0]}
+                    cy={wire.end[1]}
+                    r={isHighlighted ? 3 : 2.4}
+                    fill={isHighlighted ? "#ffffff" : "rgba(255,255,255,0.8)"}
+                  />
+                  {!prefersReduced && wire.slot === highlightedSlot && (
+                    <circle r={2.1} fill="#ffffff" opacity={0.92}>
+                      <animateMotion
+                        dur="3.6s"
+                        repeatCount="indefinite"
+                        path={wire.d}
+                      />
+                    </circle>
+                  )}
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Mobile Center Hero Horizontal 4:3 CRT TV */}
+          <div
+            style={slotPositionStyle(MOBILE_HERO_SLOT, MOBILE_STAGE_W, MOBILE_STAGE_H)}
+            className="absolute z-10"
+          >
+            <div className="rounded-[15px] bg-gradient-to-b from-[#222226] to-[#0f0f12] p-[5px] border border-white/15 shadow-[0_22px_55px_rgba(0,0,0,0.85),0_0_40px_rgba(255,255,255,0.06),inset_0_1px_0_rgba(255,255,255,0.18)]">
+              <CRTScreen
+                key={heroNode.malId}
+                fixedWidth={264}
+                fixedHeight={198}
+                playPowerOnOnMount
+                curvature={22}
+                clipToCurve
+                aberration={18}
+                aberrationScheme={0}
+                scanlines={22}
+                scanlineSize={3}
+                mask={22}
+                maskPitch={5}
+                vignette={44}
+                noise={14}
+                rollSpeed={3.4}
+                flicker={30}
+                jitter={1}
+                className="w-full rounded-[9px] border border-black/60"
+                style={{ aspectRatio: "4 / 3" }}
+              >
+                <TvScreenArtwork node={heroNode} />
+              </CRTScreen>
+              <div className="pt-1 pb-0.5 text-center">
+                <span className="block truncate px-1.5 text-[9px] font-mono uppercase tracking-[0.18em] text-paper-3 leading-none">
+                  {heroNode.shortTitle}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Minimal vertical signal connector */}
-        <div aria-hidden="true" className="flex flex-col items-center my-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-white/75" />
-          <span className="h-4 w-px bg-gradient-to-b from-white/50 to-white/20" />
-          <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
-        </div>
-
-        {/* 5-TV Connected Switcher Strip */}
-        <div className="grid grid-cols-5 gap-1.5">
-          {SATELLITE_SLOTS.map((_, idx) => {
+          {/* 5 Organic Mobile Satellite Horizontal 4:3 CRT TVs */}
+          {MOBILE_SATELLITE_SLOTS.map((slot, idx) => {
             const slotNumber = idx + 1;
             const node = nodes[order[slotNumber]];
             if (!node) return null;
-            const isActive = slotNumber === targetSlot;
+            const isActive = slotNumber === 1;
 
             return (
               <button
@@ -393,40 +526,48 @@ export function LandingGraph({ nodes }: { nodes: LandingGraphNode[] }) {
                 type="button"
                 onClick={() => swapWithHero(slotNumber)}
                 aria-label={`Inspect ${node.title}`}
-                className={`rounded-[8px] bg-gradient-to-b from-[#1e1e22] to-[#0e0e11] p-[3px] border transition-colors duration-200 cursor-pointer focus:outline-none ${
-                  isActive ? "border-white/50" : "border-white/15"
-                }`}
+                style={slotPositionStyle(slot, MOBILE_STAGE_W, MOBILE_STAGE_H)}
+                className="group absolute z-10 cursor-pointer text-left focus:outline-none"
               >
-                <CRTScreen
-                  key={node.malId}
-                  fixedWidth={144}
-                  fixedHeight={108}
-                  animateOnHover
-                  curvature={18}
-                  clipToCurve
-                  aberration={12}
-                  aberrationScheme={0}
-                  scanlines={20}
-                  scanlineSize={3}
-                  mask={20}
-                  maskPitch={4}
-                  vignette={38}
-                  noise={12}
-                  rollSpeed={3.2}
-                  flicker={26}
-                  jitter={0}
-                  className="w-full rounded-[5px] border border-black/60"
-                  style={{ aspectRatio: "4 / 3" }}
+                <div
+                  className={`rounded-[11px] bg-gradient-to-b from-[#1e1e22] to-[#0e0e11] p-[3.5px] border shadow-[0_12px_28px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.12)] transition-transform duration-200 active:scale-95 ${
+                    isActive ? "border-white/35" : "border-white/12"
+                  }`}
                 >
-                  <TvScreenArtwork node={node} />
-                </CRTScreen>
+                  <CRTScreen
+                    key={node.malId}
+                    fixedWidth={144}
+                    fixedHeight={108}
+                    animateOnHover
+                    curvature={18}
+                    clipToCurve
+                    aberration={12}
+                    aberrationScheme={0}
+                    scanlines={20}
+                    scanlineSize={3}
+                    mask={20}
+                    maskPitch={4}
+                    vignette={38}
+                    noise={12}
+                    rollSpeed={3.2}
+                    flicker={26}
+                    jitter={0}
+                    className="w-full rounded-[7px] border border-black/60"
+                    style={{ aspectRatio: "4 / 3" }}
+                  >
+                    <TvScreenArtwork node={node} />
+                  </CRTScreen>
+                </div>
               </button>
             );
           })}
         </div>
 
-        {/* WHY THEY CONNECT frosted-glass card */}
-        <div className="mt-3.5 rounded-xl border border-white/15 bg-[#19191c]/82 backdrop-blur-xl px-4 py-3.5">
+        {/* WHY THEY CONNECT frosted-glass card cleanly below the mobile graph */}
+        <div
+          className="mt-3 mx-auto rounded-xl border border-white/15 bg-[#19191c]/82 backdrop-blur-xl px-4 py-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.14)]"
+          style={{ maxWidth: "390px" }}
+        >
           <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-paper-3 mb-1">
             WHY THEY CONNECT
           </p>
