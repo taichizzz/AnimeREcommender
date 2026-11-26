@@ -19,39 +19,41 @@ export function LandingHero({ nodes }: { nodes: LandingGraphNode[] }) {
 
       {/* Top nav with full-width hairline divider */}
       <header className="relative z-10 border-b border-line">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-[0.22em]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-2">
+          <h1 className="text-lg sm:text-2xl font-bold tracking-[0.18em] sm:tracking-[0.22em] shrink-0 whitespace-nowrap">
             ANIMER<span className="text-accent">.</span>
           </h1>
 
-          <nav className="flex items-center gap-5">
+          <nav className="flex items-center gap-3 sm:gap-5 shrink-0">
             <Link
               href="/seasonal"
-              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200"
+              className="text-xs sm:text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200 whitespace-nowrap"
             >
               Seasonal
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200"
+              className="text-xs sm:text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200 whitespace-nowrap"
             >
               About
             </Link>
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
-                className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                  border border-line-2 hover:bg-ink-2 transition-colors duration-200"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200 whitespace-nowrap"
               >
-                My Dashboard
+                <span className="sm:hidden">Dashboard</span>
+                <span className="hidden sm:inline">My Dashboard</span>
               </Link>
             ) : (
               <a
                 href="/api/auth/login"
-                className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                  border border-line-2 hover:bg-ink-2 transition-colors duration-200"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200 whitespace-nowrap"
               >
-                Login with MAL
+                <span className="sm:hidden">MAL Login</span>
+                <span className="hidden sm:inline">Login with MAL</span>
               </a>
             )}
           </nav>
@@ -59,10 +61,10 @@ export function LandingHero({ nodes }: { nodes: LandingGraphNode[] }) {
       </header>
 
       {/* Asymmetric split hero + horizontal CRT knowledge graph */}
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-6 lg:pt-14 lg:pb-10">
+      <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-8 pb-6 lg:pt-14 lg:pb-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-6 items-center liquid-appear">
           <div className="lg:col-span-5">
-            <h2 className="text-4xl sm:text-5xl lg:text-[3.35rem] font-extrabold leading-[1.06] tracking-tight mb-5">
+            <h2 className="text-[2.15rem] sm:text-5xl lg:text-[3.35rem] font-extrabold leading-[1.06] tracking-tight mb-5">
               What anime 
               <br />
               do I watch next?

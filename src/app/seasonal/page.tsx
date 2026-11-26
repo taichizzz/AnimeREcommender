@@ -508,48 +508,50 @@ export default function SeasonalPage() {
 
   return (
     <div className="min-h-screen bg-ink text-paper">
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
         {/* Top nav */}
-        <div className="flex items-center justify-between mb-12 gap-4">
-          <Link href="/" aria-label="Back to home">
-            <h1 className="text-2xl font-bold tracking-[0.22em] text-paper">
+        <div className="flex items-center justify-between mb-12 gap-2">
+          <Link href="/" aria-label="Back to home" className="shrink-0">
+            <h1 className="text-lg sm:text-2xl font-bold tracking-[0.18em] sm:tracking-[0.22em] text-paper whitespace-nowrap shrink-0">
               ANIMER<span className="text-accent">.</span>
             </h1>
           </Link>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 sm:gap-5 shrink-0">
             <Link
               href="/recommend"
-              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200"
+              className="text-xs sm:text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200 whitespace-nowrap"
             >
               Recommend
             </Link>
             <Link
               href="/seasonal"
-              className="text-sm font-medium text-paper transition-colors duration-200"
+              className="text-xs sm:text-sm font-medium text-paper transition-colors duration-200 whitespace-nowrap"
             >
               Seasonal
             </Link>
             <Link
               href="/about"
-              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200"
+              className="hidden sm:inline text-xs sm:text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200 whitespace-nowrap"
             >
               About
             </Link>
             {isLoggedIn ? (
               <Link
                 href="/dashboard"
-                className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                  border border-line-2 hover:bg-ink-2 transition-colors duration-200"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200 whitespace-nowrap"
               >
-                My Dashboard
+                <span className="sm:hidden">Dashboard</span>
+                <span className="hidden sm:inline">My Dashboard</span>
               </Link>
             ) : (
               <a
                 href="/api/auth/login"
-                className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                  border border-line-2 hover:bg-ink-2 transition-colors duration-200"
+                className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200 whitespace-nowrap"
               >
-                Login with MAL
+                <span className="sm:hidden">MAL Login</span>
+                <span className="hidden sm:inline">Login with MAL</span>
               </a>
             )}
           </div>

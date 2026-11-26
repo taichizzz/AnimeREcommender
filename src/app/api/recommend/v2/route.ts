@@ -3,6 +3,7 @@ import {
   matchAnimeForUser,
   getAnimeBasicsByMalIds,
   getAnimeRichDataByIds,
+  getUserFeedback,
   type AnimeMatch,
 } from "@/lib/supabase";
 import { rerankWithReasons, type CandidateSummary, type QuizSignals } from "@/lib/groq";
@@ -137,6 +138,10 @@ export async function POST(request: Request) {
   const scores = body?.likedScores;
   const exclude = body?.excludeMalIds;
   const favoriteMalId = typeof body?.favoriteMalId === "number" ? body.favoriteMalId : undefined;
+  const userKey =
+    typeof body?.userKey === "string" && body.userKey.trim().length > 0
+      ? body.userKey.trim().slice(0, 80)
+      : undefined;
 
   const userText: string | undefined =
     typeof body?.userText === "string" && body.userText.trim().length > 0
@@ -169,6 +174,11 @@ export async function POST(request: Request) {
   const excludeMalIds = isNumberArray(exclude) ? exclude : [];
 
   try {
+    const fb = userKey ? await getUserFeedback(userKey) : undefined;
+    const mergedExcludeMalIds = fb
+      ? Array.from(new Set([...excludeMalIds, ...fb.excludedIds]))
+      : excludeMalIds;
+
     // 1) Retrieve from BOTH engines in parallel and fuse them (no silent
     //    fallback). Synopsis covers all ~14k anime; CF adds collaborative
     //    signal for the ~7.7k anime in the ratings index. When the user's seeds
@@ -177,9 +187,12 @@ export async function POST(request: Request) {
     const params = (useCF: boolean) => ({
       likedMalIds: liked,
       likedScores,
-      excludeMalIds,
+      excludeMalIds: mergedExcludeMalIds,
       matchCount: CANDIDATE_POOL,
       useCF,
+      favoriteMalId,
+      feedbackUpMalIds: fb?.likedIds,
+      feedbackDownMalIds: fb?.dislikedIds,
     });
 
     const [cfResult, synResult] = await Promise.allSettled([
@@ -214,7 +227,9 @@ export async function POST(request: Request) {
     // 2) Hard filters, in order:
     //    a) same-franchise-as-seed (sequels/prequels/spin-offs of what they gave us)
     //    b) structured dislikes from the quiz
-    const seedRows = await getAnimeBasicsByMalIds(liked);
+    const seedRows = await getAnimeBasicsByMalIds(
+      Array.from(new Set(favoriteMalId != null ? [...liked, favoriteMalId] : liked))
+    );
     const seedTitles = seedRows.flatMap((s) => [s.title, s.title_english]);
 
     const noFranchise = applyFranchiseFilter(allMatches, seedTitles);
@@ -241,7 +256,11 @@ export async function POST(request: Request) {
 
         const seedsForPrompt = liked
           .map((id, i) => ({ id, score: likedScores[i] }))
-          .sort((a, b) => b.score - a.score)
+          .sort((a, b) => {
+            if (a.id === favoriteMalId && b.id !== favoriteMalId) return -1;
+            if (b.id === favoriteMalId && a.id !== favoriteMalId) return 1;
+            return b.score - a.score;
+          })
           .slice(0, 5)
           .flatMap(({ id, score }) => {
             const s = seedById.get(id);

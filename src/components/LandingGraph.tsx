@@ -150,7 +150,7 @@ export function LandingGraph({ nodes }: { nodes: LandingGraphNode[] }) {
   return (
     <div className="w-full">
       <div
-        className="relative w-full mx-auto select-none"
+        className="hidden sm:block relative w-full mx-auto select-none"
         style={{ aspectRatio: "660 / 540", maxWidth: "680px" }}
       >
         {/* Subtle neutral darkroom ambient halo behind the hero CRT */}
@@ -260,7 +260,7 @@ export function LandingGraph({ nodes }: { nodes: LandingGraphNode[] }) {
               <TvScreenArtwork node={heroNode} />
             </CRTScreen>
             <div className="pt-1.5 pb-0.5 text-center">
-              <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-[0.22em] text-paper-3">
+              <span className="block truncate px-2 leading-none text-[9px] sm:text-[10px] font-mono uppercase tracking-[0.22em] text-paper-3">
                 {heroNode.shortTitle}
               </span>
             </div>
@@ -340,20 +340,106 @@ export function LandingGraph({ nodes }: { nodes: LandingGraphNode[] }) {
         </div>
       </div>
 
-      {/* Mobile companion card below stage so small viewports stay uncrowded */}
-      <div className="sm:hidden mt-4 rounded-xl border border-white/15 bg-[#19191c]/82 backdrop-blur-xl px-4 py-3.5">
-        <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-paper-3 mb-1">
-          WHY THEY CONNECT
-        </p>
-        <p className="text-[11px] font-medium text-paper-2 truncate mb-1.5">
-          {heroNode.shortTitle} &amp; {targetNode.shortTitle}
-        </p>
-        <p className="text-xs text-paper/90 leading-relaxed">
-          {pairReason}
-        </p>
-        <p className="text-[10px] text-paper-3 mt-2">
-          Tap any TV to switch seed
-        </p>
+      {/* Dedicated mobile vertical CRT hero + 5-TV connected switcher strip */}
+      <div className="sm:hidden max-w-[360px] mx-auto select-none">
+        {/* Full-width Hero Horizontal 4:3 CRT TV */}
+        <div className="rounded-[16px] bg-gradient-to-b from-[#222226] to-[#0f0f12] p-[6px] border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+          <CRTScreen
+            key={heroNode.malId}
+            fixedWidth={264}
+            fixedHeight={198}
+            playPowerOnOnMount
+            curvature={22}
+            clipToCurve
+            aberration={18}
+            aberrationScheme={0}
+            scanlines={22}
+            scanlineSize={3}
+            mask={22}
+            maskPitch={5}
+            vignette={44}
+            noise={14}
+            rollSpeed={3.4}
+            flicker={30}
+            jitter={1}
+            className="w-full rounded-[10px] border border-black/60"
+            style={{ aspectRatio: "4 / 3" }}
+          >
+            <TvScreenArtwork node={heroNode} />
+          </CRTScreen>
+          <div className="pt-1.5 pb-0.5 text-center truncate text-[10px] font-mono uppercase tracking-[0.2em] text-paper-3 leading-none">
+            {heroNode.shortTitle}
+          </div>
+        </div>
+
+        {/* Minimal vertical signal connector */}
+        <div aria-hidden="true" className="flex flex-col items-center my-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-white/75" />
+          <span className="h-4 w-px bg-gradient-to-b from-white/50 to-white/20" />
+          <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
+        </div>
+
+        {/* 5-TV Connected Switcher Strip */}
+        <div className="grid grid-cols-5 gap-1.5">
+          {SATELLITE_SLOTS.map((_, idx) => {
+            const slotNumber = idx + 1;
+            const node = nodes[order[slotNumber]];
+            if (!node) return null;
+            const isActive = slotNumber === targetSlot;
+
+            return (
+              <button
+                key={slotNumber}
+                type="button"
+                onClick={() => swapWithHero(slotNumber)}
+                aria-label={`Inspect ${node.title}`}
+                className={`rounded-[8px] bg-gradient-to-b from-[#1e1e22] to-[#0e0e11] p-[3px] border transition-colors duration-200 cursor-pointer focus:outline-none ${
+                  isActive ? "border-white/50" : "border-white/15"
+                }`}
+              >
+                <CRTScreen
+                  key={node.malId}
+                  fixedWidth={144}
+                  fixedHeight={108}
+                  animateOnHover
+                  curvature={18}
+                  clipToCurve
+                  aberration={12}
+                  aberrationScheme={0}
+                  scanlines={20}
+                  scanlineSize={3}
+                  mask={20}
+                  maskPitch={4}
+                  vignette={38}
+                  noise={12}
+                  rollSpeed={3.2}
+                  flicker={26}
+                  jitter={0}
+                  className="w-full rounded-[5px] border border-black/60"
+                  style={{ aspectRatio: "4 / 3" }}
+                >
+                  <TvScreenArtwork node={node} />
+                </CRTScreen>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* WHY THEY CONNECT frosted-glass card */}
+        <div className="mt-3.5 rounded-xl border border-white/15 bg-[#19191c]/82 backdrop-blur-xl px-4 py-3.5">
+          <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-paper-3 mb-1">
+            WHY THEY CONNECT
+          </p>
+          <p className="text-[11px] font-medium text-paper-2 truncate mb-1.5">
+            {heroNode.shortTitle} &amp; {targetNode.shortTitle}
+          </p>
+          <p className="text-xs text-paper/90 leading-relaxed">
+            {pairReason}
+          </p>
+          <p className="text-[10px] text-paper-3 mt-2">
+            Tap any TV to switch seed
+          </p>
+        </div>
       </div>
     </div>
   );

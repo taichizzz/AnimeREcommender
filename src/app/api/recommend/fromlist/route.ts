@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
   const userText: unknown = body?.userText;
   const favoriteMalId: unknown = body?.favoriteMalId;
   const quiz: unknown = body?.quiz;
+  const userKey: unknown = body?.userKey;
 
   const [completed, watching] = await Promise.all([
     fetchAllMALList(token, "completed"),
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
       userText,
       favoriteMalId,
       quiz,
+      userKey,
     }),
   });
 

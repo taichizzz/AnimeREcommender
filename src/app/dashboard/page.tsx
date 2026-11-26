@@ -382,23 +382,23 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-ink text-paper">
-      <main className="max-w-5xl mx-auto px-6 py-12">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
 
         {/* Nav */}
-        <div className="flex items-center justify-between mb-10">
-          <Link href="/" className="text-xl font-bold tracking-[0.18em] text-paper">
+        <div className="flex items-center justify-between gap-2 mb-10">
+          <Link href="/" className="text-lg sm:text-xl font-bold tracking-[0.18em] sm:tracking-[0.22em] text-paper whitespace-nowrap shrink-0">
             ANIMER<span className="text-accent">.</span>
           </Link>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 sm:gap-5 shrink-0">
             <Link href="/seasonal"
-              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              className="text-xs sm:text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200 whitespace-nowrap">
               Seasonal
             </Link>
             <Link href="/about"
-              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              className="text-xs sm:text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200 whitespace-nowrap">
               About
             </Link>
-            <a href="/api/auth/logout" className="text-sm text-paper-2 hover:text-paper transition-colors">
+            <a href="/api/auth/logout" className="text-xs sm:text-sm text-paper-2 hover:text-paper transition-colors whitespace-nowrap">
               Log Out
             </a>
           </div>
