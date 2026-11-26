@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
+import { CRTScreen } from "@/components/CRTScreen";
 import { RecommendQuiz, type QuizResult } from "@/components/RecommendQuiz";
 import { RecommendationsLoadingList } from "@/components/Skeletons";
 import { Heartbeat, HeartbeatWithLabel } from "@/components/Heartbeat";
@@ -315,6 +316,10 @@ export default function RecommendPage() {
             </h1>
           </Link>
           <div className="flex items-center gap-5">
+            <Link href="/seasonal"
+              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              Seasonal
+            </Link>
             <Link href="/about"
               className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
               About
@@ -638,7 +643,7 @@ export default function RecommendPage() {
 
                 return (
                   <div key={r.id}
-                    className={`glass card-appear rounded-2xl border bg-ink-2 p-4 cursor-pointer
+                    className={`group glass card-appear rounded-2xl border bg-ink-2 p-4 cursor-pointer
                       ${expanded
                         ? "border-line-2 bg-ink-3"
                         : "glass-hover border-line hover:border-line-2"}`}
@@ -649,15 +654,43 @@ export default function RecommendPage() {
                     <div className="flex gap-4">
                       <div className="flex-shrink-0 flex flex-col items-center gap-1.5">
                         <span className="text-xs font-mono text-paper-3">#{i + 1}</span>
-                        {r.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={r.imageUrl} alt={r.title}
-                            className={`object-cover rounded-lg transition-all duration-300 ${expanded ? "w-44 shadow-xl shadow-black/40" : "w-16"}`}
-                            style={{ height: expanded ? "240px" : "88px" }} />
-                        ) : (
-                          <div className={`rounded-lg bg-ink-3 transition-all duration-300 ${expanded ? "w-44" : "w-16"}`}
-                            style={{ height: expanded ? "240px" : "88px" }} />
-                        )}
+                        <CRTScreen
+                          key={expanded ? "expanded" : "compact"}
+                          fixedWidth={expanded ? 176 : 64}
+                          fixedHeight={expanded ? 240 : 88}
+                          animateOnHover={!expanded}
+                          playPowerOnOnMount={expanded}
+                          curvature={expanded ? 28 : 22}
+                          clipToCurve
+                          aberration={expanded ? 34 : 24}
+                          aberrationScheme={0}
+                          scanlines={28}
+                          scanlineSize={expanded ? 4 : 3}
+                          mask={expanded ? 32 : 30}
+                          maskPitch={expanded ? 6 : 4}
+                          vignette={expanded ? 50 : 45}
+                          noise={expanded ? 20 : 16}
+                          rollSpeed={expanded ? 4 : 3.5}
+                          flicker={expanded ? 48 : 35}
+                          jitter={expanded ? 2 : 0}
+                          className={`rounded-lg transition-all duration-300 ${
+                            expanded
+                              ? "w-44 border border-line-2 shadow-xl shadow-black/40"
+                              : "w-16 border border-line"
+                          }`}
+                          style={{ height: expanded ? "240px" : "88px" }}
+                        >
+                          {r.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={r.imageUrl}
+                              alt={r.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-ink-3" />
+                          )}
+                        </CRTScreen>
                       </div>
                       <div className="flex-1 min-w-0">
                         {/* items-center, not items-baseline: the row mixes a 16px

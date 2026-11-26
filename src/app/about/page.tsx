@@ -18,19 +18,25 @@ export default function AboutPage() {
               ANIMER<span className="text-accent">.</span>
             </h1>
           </Link>
-          {isLoggedIn ? (
-            <Link href="/dashboard"
-              className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
-              My Dashboard
+          <div className="flex items-center gap-5">
+            <Link href="/seasonal"
+              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              Seasonal
             </Link>
-          ) : (
-            <a href="/api/auth/login"
-              className="px-4 py-2 rounded-md text-sm font-medium text-paper
-                border border-line-2 hover:bg-ink-2 transition-colors duration-200">
-              Login with MAL
-            </a>
-          )}
+            {isLoggedIn ? (
+              <Link href="/dashboard"
+                className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200">
+                My Dashboard
+              </Link>
+            ) : (
+              <a href="/api/auth/login"
+                className="px-4 py-2 rounded-md text-sm font-medium text-paper
+                  border border-line-2 hover:bg-ink-2 transition-colors duration-200">
+                Login with MAL
+              </a>
+            )}
+          </div>
         </div>
 
         <div className="liquid-appear">

@@ -18,6 +18,10 @@ export function Footer({ width = "max-w-4xl" }: { width?: string }) {
           <span className="text-paper-3">·</span>
           <span>Built by taichizzz</span>
           <span className="text-paper-3">·</span>
+          <Link href="/seasonal" className="hover:text-paper transition-colors duration-200">
+            Seasonal
+          </Link>
+          <span className="text-paper-3">·</span>
           <Link href="/about" className="hover:text-paper transition-colors duration-200">
             About
           </Link>

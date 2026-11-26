@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/components/Footer";
+import { CRTScreen } from "@/components/CRTScreen";
 import { Heartbeat } from "@/components/Heartbeat";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label, Sector,
@@ -389,6 +390,10 @@ export default function DashboardPage() {
             ANIMER<span className="text-accent">.</span>
           </Link>
           <div className="flex items-center gap-5">
+            <Link href="/seasonal"
+              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              Seasonal
+            </Link>
             <Link href="/about"
               className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
               About
@@ -627,13 +632,38 @@ export default function DashboardPage() {
                 overflow-hidden transition-all duration-200
                 hover:-translate-y-1 hover:border-line-2 hover:shadow-lg hover:shadow-black/40"
               style={{ animationDelay: `${i * 25}ms` }}>
-              {entry.node.main_picture ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={entry.node.main_picture.medium} alt={entry.node.title}
-                  className="w-full object-cover flex-shrink-0" style={{ height: "160px" }} />
-              ) : (
-                <div className="w-full bg-ink-3 flex-shrink-0" style={{ height: "160px" }} />
-              )}
+              <CRTScreen
+                fixedWidth={140}
+                fixedHeight={160}
+                animateOnHover
+                curvature={20}
+                clipToCurve
+                aberration={22}
+                aberrationScheme={0}
+                scanlines={26}
+                scanlineSize={3}
+                mask={28}
+                maskPitch={4}
+                vignette={44}
+                noise={16}
+                rollSpeed={3.2}
+                flicker={32}
+                jitter={0}
+                className="w-full flex-shrink-0"
+                style={{ height: "160px" }}
+              >
+                {entry.node.main_picture ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={entry.node.main_picture.medium}
+                    alt={entry.node.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-ink-3" />
+                )}
+              </CRTScreen>
               {/* Column so the badge can sit on the baseline of every card, no
                   matter whether the title wraps to one line or two. */}
               <div className="flex flex-1 flex-col p-3">

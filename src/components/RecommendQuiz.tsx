@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CRTScreen } from "@/components/CRTScreen";
 import { HeartbeatWithLabel } from "@/components/Heartbeat";
 
 export type QuizPick = {
@@ -471,23 +472,43 @@ function FavoriteWheel({
             }}
             onClick={() => centerCardRef.current(i)}
             style={{ width: CARD_W, left: "50%", top: "50%" }}
-            className={`absolute rounded-lg border-2 p-2 text-left will-change-transform
+            className={`group absolute rounded-lg border-2 p-2 text-left will-change-transform
               transition-[border-color,box-shadow] duration-200
               ${focusedId === p.id
                 ? "border-accent bg-accent/10 shadow-2xl shadow-black/40"
                 : "border-line bg-ink-2"}`}
           >
-            {p.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={p.imageUrl}
-                alt={p.title}
-                draggable={false}
-                className="w-full aspect-[3/4] object-cover rounded-xl mb-2 pointer-events-none"
-              />
-            ) : (
-              <div className="w-full aspect-[3/4] rounded-xl bg-ink-3 mb-2" />
-            )}
+            <CRTScreen
+              fixedWidth={172}
+              fixedHeight={229}
+              animateOnHover={focusedId !== p.id}
+              curvature={24}
+              clipToCurve
+              aberration={28}
+              aberrationScheme={0}
+              scanlines={26}
+              scanlineSize={4}
+              mask={30}
+              maskPitch={5}
+              vignette={46}
+              noise={18}
+              rollSpeed={3.5}
+              flicker={40}
+              jitter={0}
+              className="w-full aspect-[3/4] rounded-xl mb-2 pointer-events-none"
+            >
+              {p.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.imageUrl}
+                  alt={p.title}
+                  draggable={false}
+                  className="w-full h-full object-cover pointer-events-none"
+                />
+              ) : (
+                <div className="w-full h-full bg-ink-3" />
+              )}
+            </CRTScreen>
             <div className="text-sm font-semibold truncate px-1">{p.title}</div>
           </button>
         ))}

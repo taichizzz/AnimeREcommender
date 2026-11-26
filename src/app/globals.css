@@ -74,6 +74,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .card-appear,
   .liquid-appear,
+  .modal-backdrop-appear,
+  .modal-backdrop-exit,
+  [data-crt-layer],
+  [data-crt-layer] *,
   .glass-hover { animation: none !important; transition: none !important; }
   .glass-hover:hover { transform: none; }
 }
@@ -147,4 +151,96 @@ body {
   animation: slicePop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   transform-box: fill-box;
   transform-origin: center;
+}
+
+@keyframes modalBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalBackdropOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.modal-backdrop-appear {
+  animation: modalBackdropIn 0.24s ease-out forwards;
+}
+
+.modal-backdrop-exit {
+  animation: modalBackdropOut 0.22s ease-in forwards;
+}
+
+/* CRTFigma shader-accurate CRT overlay animations */
+[data-crt-paused],
+[data-crt-paused] * {
+  animation-play-state: paused !important;
+}
+
+@keyframes crtfx-scan-v {
+  from { background-position: 0 0; }
+  to   { background-position: 0 var(--crt-period); }
+}
+
+@keyframes crtfx-noise {
+  0%   { background-position: 0 0; }
+  10%  { background-position: -13% 7%; }
+  20%  { background-position: 21% -9%; }
+  30%  { background-position: -37% 23%; }
+  40%  { background-position: 11% 41%; }
+  50%  { background-position: -29% -17%; }
+  60%  { background-position: 43% 3%; }
+  70%  { background-position: -7% -31%; }
+  80%  { background-position: 27% 19%; }
+  90%  { background-position: -19% -43%; }
+  100% { background-position: 0 0; }
+}
+
+@keyframes crtfx-flicker {
+  0%   { opacity: calc(var(--crt-flicker) * 0.10); }
+  8%   { opacity: calc(var(--crt-flicker) * 0.30); }
+  14%  { opacity: calc(var(--crt-flicker) * 0.05); }
+  22%  { opacity: calc(var(--crt-flicker) * 0.22); }
+  31%  { opacity: calc(var(--crt-flicker) * 0.02); }
+  40%  { opacity: calc(var(--crt-flicker) * 0.35); }
+  47%  { opacity: calc(var(--crt-flicker) * 0.12); }
+  55%  { opacity: calc(var(--crt-flicker) * 0.28); }
+  63%  { opacity: calc(var(--crt-flicker) * 0.04); }
+  72%  { opacity: calc(var(--crt-flicker) * 0.18); }
+  80%  { opacity: calc(var(--crt-flicker) * 0.40); }
+  88%  { opacity: calc(var(--crt-flicker) * 0.06); }
+  100% { opacity: calc(var(--crt-flicker) * 0.10); }
+}
+
+@keyframes crtfx-roll-track {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+@keyframes crtfx-off-bg {
+  0%   { opacity: 0; }
+  25%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes crtfx-off-line {
+  0%   { transform: scale(1, 1);        opacity: 0; }
+  10%  { transform: scale(1, 1);        opacity: 0.9; }
+  50%  { transform: scale(1, 0.006);    opacity: 1; }
+  80%  { transform: scale(0.03, 0.006); opacity: 1; }
+  100% { transform: scale(0, 0.004);    opacity: 0; }
+}
+
+@keyframes crtfx-on-bg {
+  0%   { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes crtfx-on-line {
+  0%   { transform: scale(0, 0.004);    opacity: 0; }
+  15%  { transform: scale(0.03, 0.006); opacity: 1; }
+  45%  { transform: scale(1, 0.006);    opacity: 1; }
+  70%  { transform: scale(1, 1);        opacity: 0.9; }
+  100% { transform: scale(1, 1);        opacity: 0; }
 }

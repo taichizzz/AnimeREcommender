@@ -18,6 +18,10 @@ export default function LandingPage() {
           </h1>
 
           <div className="flex items-center gap-5">
+            <Link href="/seasonal"
+              className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
+              Seasonal
+            </Link>
             <Link href="/about"
               className="text-sm font-medium text-paper-2 hover:text-paper transition-colors duration-200">
               About

@@ -1,43 +1,38 @@
 {
-  "ranAt": "2026-07-11T08:16:04.222Z",
+  "ranAt": "2026-11-25T09:15:58.567Z",
   "baseUrl": "http://localhost:3000",
   "agg": {
     "profiles": 12,
-    "passed": 10,
-    "failed": 2,
-    "avgDistinctFranchises": 9.9,
+    "passed": 12,
+    "failed": 0,
+    "avgDistinctFranchises": 9.916666666666666,
     "totalFranchiseLeaks": 0,
     "engineMix": {
-      "synopsis": 2,
-      "hybrid": 10
+      "hybrid": 12
     }
   },
   "rows": [
     {
       "name": "modern_shounen",
       "count": 10,
-      "engineUsed": "synopsis",
-      "modern": 2,
+      "engineUsed": "hybrid",
+      "modern": 8,
       "distinctFranchises": 10,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
-      "pass": false,
-      "failures": [
-        "only 2 modern (2019+) result(s) for modern taste"
-      ]
+      "pass": true,
+      "failures": []
     },
     {
       "name": "modern_mixed",
       "count": 10,
-      "engineUsed": "synopsis",
-      "modern": 2,
+      "engineUsed": "hybrid",
+      "modern": 8,
       "distinctFranchises": 10,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
-      "pass": false,
-      "failures": [
-        "only 2 modern (2019+) result(s) for modern taste"
-      ]
+      "pass": true,
+      "failures": []
     },
     {
       "name": "classic_canon",
@@ -66,7 +61,7 @@
       "count": 10,
       "engineUsed": "hybrid",
       "modern": 0,
-      "distinctFranchises": 9,
+      "distinctFranchises": 10,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
@@ -76,8 +71,8 @@
       "name": "slice_of_life",
       "count": 10,
       "engineUsed": "hybrid",
-      "modern": 0,
-      "distinctFranchises": 10,
+      "modern": 1,
+      "distinctFranchises": 9,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
       "pass": true,
@@ -109,7 +104,7 @@
       "name": "sports_hater",
       "count": 10,
       "engineUsed": "hybrid",
-      "modern": 1,
+      "modern": 0,
       "distinctFranchises": 10,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
@@ -131,7 +126,7 @@
       "name": "seinen",
       "count": 10,
       "engineUsed": "hybrid",
-      "modern": 1,
+      "modern": 8,
       "distinctFranchises": 10,
       "franchiseLeaks": 0,
       "dislikeViolations": 0,
