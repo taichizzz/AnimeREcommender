@@ -73,15 +73,208 @@ const BASE_LAYER: React.CSSProperties = {
 };
 
 const REDUCE_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const SVG_NS = "http://www.w3.org/2000/svg";
+const SHARED_DEFS_ID = "crtfx-shared-defs";
 
 function subscribeNoop() {
   return () => {};
 }
 
+let sharedReducedMq: MediaQueryList | null = null;
+const reducedMotionListeners = new Set<() => void>();
+
+function onReducedMotionChange() {
+  for (const cb of reducedMotionListeners) cb();
+}
+
 function subscribeReducedMotion(onChange: () => void) {
-  const mq = window.matchMedia(REDUCE_MOTION_QUERY);
-  mq.addEventListener("change", onChange);
-  return () => mq.removeEventListener("change", onChange);
+  if (!sharedReducedMq) {
+    sharedReducedMq = window.matchMedia(REDUCE_MOTION_QUERY);
+    sharedReducedMq.addEventListener("change", onReducedMotionChange);
+  }
+  reducedMotionListeners.add(onChange);
+  return () => {
+    reducedMotionListeners.delete(onChange);
+  };
+}
+
+let sharedIo: IntersectionObserver | null = null;
+const ioCallbacks = new WeakMap<Element, (visible: boolean) => void>();
+
+function observeOnscreen(el: Element, cb: (visible: boolean) => void): () => void {
+  if (typeof IntersectionObserver === "undefined") return () => {};
+  if (!sharedIo) {
+    sharedIo = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        ioCallbacks.get(entry.target)?.(entry.isIntersecting);
+      }
+    });
+  }
+  ioCallbacks.set(el, cb);
+  sharedIo.observe(el);
+  return () => {
+    ioCallbacks.delete(el);
+    sharedIo?.unobserve(el);
+  };
+}
+
+function hashKey(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
+function svgEl(tag: string, attrs: Record<string, string | number>): SVGElement {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    node.setAttribute(k, String(v));
+  }
+  return node;
+}
+
+type SharedFilterOpts = {
+  barrel: WarpMap | null;
+  radial: { uri: string } | null;
+  curvature01: number;
+  aberrPx: number;
+  aberrationScheme: 0 | 1 | 2;
+  toneTable: string;
+};
+
+/**
+ * Registers a static CRT SVG filter once in a single shared hidden <defs>
+ * so hundreds of identically sized grid thumbnails reuse one GPU filter graph.
+ */
+function ensureSharedSvgFilter(id: string, opts: SharedFilterOpts) {
+  if (typeof document === "undefined" || document.getElementById(id)) return;
+
+  let svg = document.getElementById(SHARED_DEFS_ID) as SVGSVGElement | null;
+  if (!svg) {
+    svg = document.createElementNS(SVG_NS, "svg");
+    svg.id = SHARED_DEFS_ID;
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute(
+      "style",
+      "position:fixed;width:0;height:0;overflow:hidden;pointer-events:none"
+    );
+    svg.appendChild(document.createElementNS(SVG_NS, "defs"));
+    document.body.appendChild(svg);
+  }
+
+  let defs = svg.querySelector("defs");
+  if (!defs) {
+    defs = document.createElementNS(SVG_NS, "defs");
+    svg.appendChild(defs);
+  }
+
+  const filter = svgEl("filter", {
+    id,
+    x: "0",
+    y: "0",
+    width: "100%",
+    height: "100%",
+    "color-interpolation-filters": "sRGB",
+  });
+
+  let src = "SourceGraphic";
+  if (opts.curvature01 > 0 && opts.barrel) {
+    filter.appendChild(
+      svgEl("feImage", {
+        href: opts.barrel.uri,
+        preserveAspectRatio: "none",
+        result: "bmap",
+      })
+    );
+    filter.appendChild(
+      svgEl("feDisplacementMap", {
+        in: src,
+        in2: "bmap",
+        scale: opts.barrel.scale,
+        xChannelSelector: "R",
+        yChannelSelector: "G",
+        result: "warp",
+      })
+    );
+    src = "warp";
+  }
+
+  if (opts.aberrPx > 0) {
+    filter.appendChild(svgEl("feColorMatrix", { in: src, type: "matrix", values: KEEP_R, result: "r0" }));
+    filter.appendChild(svgEl("feColorMatrix", { in: src, type: "matrix", values: KEEP_G, result: "g0" }));
+    filter.appendChild(svgEl("feColorMatrix", { in: src, type: "matrix", values: KEEP_B, result: "b0" }));
+
+    if (opts.aberrationScheme === 0 && opts.radial) {
+      filter.appendChild(
+        svgEl("feImage", {
+          href: opts.radial.uri,
+          preserveAspectRatio: "none",
+          result: "rmap",
+        })
+      );
+      filter.appendChild(
+        svgEl("feDisplacementMap", {
+          in: "r0",
+          in2: "rmap",
+          scale: 2.4 * opts.aberrPx,
+          xChannelSelector: "R",
+          yChannelSelector: "G",
+          result: "r1",
+        })
+      );
+      filter.appendChild(
+        svgEl("feDisplacementMap", {
+          in: "b0",
+          in2: "rmap",
+          scale: -2.4 * opts.aberrPx,
+          xChannelSelector: "R",
+          yChannelSelector: "G",
+          result: "b1",
+        })
+      );
+    } else {
+      const dx = opts.aberrationScheme === 2 ? 0.95 * opts.aberrPx : 1.15 * opts.aberrPx;
+      const dy = opts.aberrationScheme === 2 ? -0.55 * opts.aberrPx : 0;
+      filter.appendChild(svgEl("feOffset", { in: "r0", dx, dy, result: "r1" }));
+      filter.appendChild(svgEl("feOffset", { in: "b0", dx: -dx, dy: -dy, result: "b1" }));
+    }
+
+    filter.appendChild(
+      svgEl("feComposite", {
+        in: "r1",
+        in2: "g0",
+        operator: "arithmetic",
+        k1: 0,
+        k2: 1,
+        k3: 1,
+        k4: 0,
+        result: "rg",
+      })
+    );
+    filter.appendChild(
+      svgEl("feComposite", {
+        in: "rg",
+        in2: "b1",
+        operator: "arithmetic",
+        k1: 0,
+        k2: 1,
+        k3: 1,
+        k4: 0,
+        result: "rgb",
+      })
+    );
+    src = "rgb";
+  }
+
+  const transfer = svgEl("feComponentTransfer", { in: src, result: "tone" });
+  transfer.appendChild(svgEl("feFuncR", { type: "table", tableValues: opts.toneTable }));
+  transfer.appendChild(svgEl("feFuncG", { type: "table", tableValues: opts.toneTable }));
+  transfer.appendChild(svgEl("feFuncB", { type: "table", tableValues: opts.toneTable }));
+  filter.appendChild(transfer);
+
+  defs.appendChild(filter);
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -324,12 +517,8 @@ export function CRTScreen({
 
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver((entries) => {
-      for (const entry of entries) setOnscreen(entry.isIntersecting);
-    });
-    io.observe(el);
-    return () => io.disconnect();
+    if (!el) return;
+    return observeOnscreen(el, setOnscreen);
   }, []);
 
   useEffect(() => {
@@ -416,6 +605,25 @@ export function CRTScreen({
     size.w > 0 &&
     (curvature01 <= 0 || !!barrel) &&
     (aberrPx <= 0 || aberrationScheme !== 0 || !!radial);
+
+  const useSharedFilter = filterReady && jitter01 === 0;
+  const sharedFilterId = useMemo(() => {
+    if (!useSharedFilter) return null;
+    const spec = `${size.w}x${size.h}:${curvature01.toFixed(3)}:${clipToCurve ? 1 : 0}:${aberrPx.toFixed(3)}:${aberrationScheme}:${gain.toFixed(4)}`;
+    return "crtfx-s-" + hashKey(spec);
+  }, [useSharedFilter, size.w, size.h, curvature01, clipToCurve, aberrPx, aberrationScheme, gain]);
+
+  useEffect(() => {
+    if (!useSharedFilter || !sharedFilterId) return;
+    ensureSharedSvgFilter(sharedFilterId, {
+      barrel,
+      radial,
+      curvature01,
+      aberrPx,
+      aberrationScheme,
+      toneTable,
+    });
+  }, [useSharedFilter, sharedFilterId, barrel, radial, curvature01, aberrPx, aberrationScheme, toneTable]);
 
   if (!enabled) {
     return (
@@ -643,7 +851,7 @@ export function CRTScreen({
   }
 
   const filterPrims: React.ReactNode[] = [];
-  if (filterReady) {
+  if (filterReady && !useSharedFilter) {
     let src = "SourceGraphic";
 
     if (curvature01 > 0 && barrel) {
@@ -788,13 +996,15 @@ export function CRTScreen({
     );
   }
 
+  const activeFilterId = sharedFilterId ?? fid;
+
   return (
     <div
       ref={containerRef}
       className={`relative overflow-hidden bg-[#060608] ${className}`}
       style={style}
     >
-      {filterReady && (
+      {filterReady && !useSharedFilter && (
         <svg
           aria-hidden="true"
           style={{
@@ -824,7 +1034,7 @@ export function CRTScreen({
           reaches the artwork, and the parent applies the SVG barrel/RGB warp. */}
       <div
         className="relative w-full h-full"
-        style={{ filter: filterReady ? `url(#${fid})` : undefined }}
+        style={{ filter: filterReady ? `url(#${activeFilterId})` : undefined }}
       >
         {children}
         {layers.map((el) =>

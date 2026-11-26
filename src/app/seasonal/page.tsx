@@ -556,36 +556,38 @@ export default function SeasonalPage() {
         </div>
 
         {/* Minimal season switcher */}
-        <header className="mb-8 liquid-appear flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              const prev = stepSeason(year, season, -1);
-              setYear(prev.year);
-              setSeason(prev.season);
-            }}
-            aria-label="Previous season"
-            className="cursor-pointer w-9 h-9 rounded-xl border border-line bg-ink-2 text-paper-2
-              hover:text-paper hover:border-line-2 transition-colors flex items-center justify-center"
-          >
-            ←
-          </button>
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-            {seasonLabel}
-          </h2>
-          <button
-            type="button"
-            onClick={() => {
-              const next = stepSeason(year, season, 1);
-              setYear(next.year);
-              setSeason(next.season);
-            }}
-            aria-label="Next season"
-            className="cursor-pointer w-9 h-9 rounded-xl border border-line bg-ink-2 text-paper-2
-              hover:text-paper hover:border-line-2 transition-colors flex items-center justify-center"
-          >
-            →
-          </button>
+        <header className="mb-8 liquid-appear flex flex-col items-center gap-2">
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const prev = stepSeason(year, season, -1);
+                setYear(prev.year);
+                setSeason(prev.season);
+              }}
+              aria-label="Previous season"
+              className="cursor-pointer w-9 h-9 rounded-xl border border-line bg-ink-2 text-paper-2
+                hover:text-paper hover:border-line-2 transition-colors flex items-center justify-center"
+            >
+              ←
+            </button>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-center">
+              {seasonLabel}
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                const next = stepSeason(year, season, 1);
+                setYear(next.year);
+                setSeason(next.season);
+              }}
+              aria-label="Next season"
+              className="cursor-pointer w-9 h-9 rounded-xl border border-line bg-ink-2 text-paper-2
+                hover:text-paper hover:border-line-2 transition-colors flex items-center justify-center"
+            >
+              →
+            </button>
+          </div>
           {!isViewingCurrent && (
             <button
               type="button"
@@ -629,8 +631,10 @@ export default function SeasonalPage() {
         </div>
 
         {/* ── TAB 1: ALL ANIME ───────────────────────────────────────────── */}
-        {tab === "browse" && (
-          <div key="browse" className="liquid-appear">
+        <div
+          className={tab === "browse" ? "" : "hidden"}
+          aria-hidden={tab !== "browse"}
+        >
             {error && (
               <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                 {error}
@@ -656,6 +660,10 @@ export default function SeasonalPage() {
                       key={item.id}
                       type="button"
                       onClick={(e) => openModal(item, e.currentTarget)}
+                      style={{
+                        contentVisibility: "auto",
+                        containIntrinsicSize: "auto 148px",
+                      }}
                       className="group glass glass-hover text-left rounded-2xl border border-line bg-ink-2 p-4
                         hover:border-line-2 cursor-pointer transition-colors"
                     >
@@ -752,8 +760,7 @@ export default function SeasonalPage() {
                 })}
               </div>
             )}
-          </div>
-        )}
+        </div>
 
         {/* ── TAB 2: FOR YOU ─────────────────────────────────────────────── */}
         {tab === "foryou" && (
